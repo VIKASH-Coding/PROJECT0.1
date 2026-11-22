@@ -1940,7 +1940,7 @@ document.querySelectorAll(".sidebar .nav-link").forEach(function (link) {
 // =====================================================
 // BACKEND API CONFIG & CLOUD SYNC HELPER
 // =====================================================
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://unitrack-r412.onrender.com/api";
 
 function getAuthToken() {
     return localStorage.getItem("studyflowToken");
