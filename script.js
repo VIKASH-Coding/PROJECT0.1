@@ -1941,6 +1941,7 @@ document.querySelectorAll(".sidebar .nav-link").forEach(function (link) {
 // BACKEND API CONFIG & CLOUD SYNC HELPER
 // =====================================================
 const API_BASE_URL = "https://unitrack-r412.onrender.com/api";
+let isCloudDataLoaded = false;
 
 function getAuthToken() {
     return localStorage.getItem("studyflowToken");
@@ -1958,20 +1959,34 @@ async function loadStudyDataFromCloud() {
         if (!res.ok) return;
 
         const data = await res.json();
+
+        // 1. LocalStorage me save karein
         if (data.subjects) localStorage.setItem("studyflowSubjects", JSON.stringify(data.subjects));
         if (data.tasks) localStorage.setItem("studyflowTasks", JSON.stringify(data.tasks));
         if (data.schedules) localStorage.setItem("studyflowSchedules", JSON.stringify(data.schedules));
         if (data.notes) localStorage.setItem("studyflowNotes", JSON.stringify(data.notes));
-        if (data.pomodoro) {
-            localStorage.setItem("studyflowPomodoroStats", JSON.stringify(data.pomodoro));
-        }
+        if (data.pomodoro) localStorage.setItem("studyflowPomodoroStats", JSON.stringify(data.pomodoro));
 
-        // UI refresh functions agar defined hain toh call karein
+        // 2. Global JS variables ko bhi update karein (agar defined hain)
+        try { if (typeof subjects !== "undefined" && data.subjects) subjects = data.subjects; } catch (e) {}
+        try { if (typeof tasks !== "undefined" && data.tasks) tasks = data.tasks; } catch (e) {}
+        try { if (typeof schedules !== "undefined" && data.schedules) schedules = data.schedules; } catch (e) {}
+        try { if (typeof notes !== "undefined" && data.notes) notes = data.notes; } catch (e) {}
+        try {
+            if (typeof pomodoroStats !== "undefined" && data.pomodoro) {
+                pomodoroStats = { ...pomodoroStats, ...data.pomodoro };
+            }
+        } catch (e) {}
+
+        isCloudDataLoaded = true;
+
+        // 3. UI refresh functions call karein
         if (typeof renderSubjects === "function") renderSubjects();
         if (typeof renderTasks === "function") renderTasks();
         if (typeof renderSchedules === "function") renderSchedules();
         if (typeof renderNotes === "function") renderNotes();
         if (typeof updateDashboardStats === "function") updateDashboardStats();
+        if (typeof updatePomodoroUI === "function") updatePomodoroUI();
     } catch (err) {
         console.warn("Offline mode: using local cache", err);
     }
@@ -1980,7 +1995,8 @@ async function loadStudyDataFromCloud() {
 // Local data ko MongoDB Cloud par sync karna
 async function syncStudyDataToCloud() {
     const token = getAuthToken();
-    if (!token) return;
+    // Jab tak cloud se data load na ho jaye, khali data sync mat karein
+    if (!token || !isCloudDataLoaded) return;
 
     try {
         const payload = {
@@ -2238,8 +2254,14 @@ const logoutBtn = document.getElementById("logoutBtn");
 if (logoutBtn) {
     logoutBtn.addEventListener("click", async function () {
         await syncStudyDataToCloud();
+        isCloudDataLoaded = false;
         localStorage.removeItem("studyflowLoggedIn");
         localStorage.removeItem("studyflowToken");
+        localStorage.removeItem("studyflowSubjects");
+        localStorage.removeItem("studyflowTasks");
+        localStorage.removeItem("studyflowSchedules");
+        localStorage.removeItem("studyflowNotes");
+        localStorage.removeItem("studyflowPomodoroStats");
         showLoginPage();
         showAuthMessage("loginMessage", "Logged out safely. All data synced!", "success");
     });
