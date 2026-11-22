@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>
+        StudyFlow - Student Study Manager
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="style.css">
+
+</head>
+
+
+<body>
+       
+     <!-- =========================================
+         REGISTER PAGE
+    ========================================== -->
+    <div id="registerPage" class="auth-page">
+        <div class="auth-card">
+            <div class="auth-logo">📚</div>
+            <h1>StudyFlow</h1>
+            <p class="auth-subtitle">Create your student account</p>
+
+            <!-- Alert Message Box -->
+            <div id="registerMessage" class="auth-message" style="display: none;"></div>
+
+            <form id="registerForm">
+                <!-- Full Name -->
+                <div class="auth-field">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" placeholder="Enter your full name" required>
+                </div>
+
+                <!-- Email -->
+                <div class="auth-field">
+                    <label for="registerEmail">Email Address</label>
+                    <input type="email" id="registerEmail" placeholder="name@example.com" required>
+                </div>
+
+                <!-- Gender -->
+                <div class="auth-field">
+                    <label for="registerGender">Gender</label>
+                    <select id="registerGender" required>
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Password with Eye Button -->
+                <div class="auth-field">
+                    <label for="registerPassword">Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="registerPassword" placeholder="Min. 6 characters" required>
+                        <button type="button" class="toggle-eye-btn" data-target="registerPassword" aria-label="Show password">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Confirm Password with Eye Button -->
+                <div class="auth-field">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="confirmPassword" placeholder="Re-enter your password" required>
+                        <button type="button" class="toggle-eye-btn" data-target="confirmPassword" aria-label="Show password">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn">Create Account</button>
+            </form>
+
+            <div class="auth-switch">
+                Already have an account?
+                <button type="button" id="showLoginBtn">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================
+         LOGIN PAGE
+    ========================================== -->
+    <div id="loginPage" class="auth-page" style="display: none;">
+        <div class="auth-card">
+            <div class="auth-logo">📚</div>
+            <h1>StudyFlow</h1>
+            <p class="auth-subtitle">Welcome back! Please enter your details.</p>
+
+            <!-- Alert Message Box -->
+            <div id="loginMessage" class="auth-message" style="display: none;"></div>
+
+            <form id="loginForm">
+                <!-- Email -->
+                <div class="auth-field">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email" required>
+                </div>
+
+                <!-- Password with Eye Button -->
+                <div class="auth-field">
+                    <label for="loginPassword">Password</label>
+                    <div class="password-input-wrap">
+                        <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                        <button type="button" class="toggle-eye-btn" data-target="loginPassword" aria-label="Show password">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="auth-options">
+                    <label class="remember-label">
+                        <input type="checkbox" id="rememberMeCheckbox" checked>
+                        <span>Remember me</span>
+                    </label>
+                    <button type="button" id="forgotPasswordBtn" class="forgot-link">
+                        Forgot password?
+                    </button>
+                </div>
+
+                <button type="submit" class="auth-btn">Sign In</button>
+            </form>
+
+            <div class="auth-switch">
+                Don't have an account?
+                <button type="button" id="showRegisterBtn">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================
+         SIDEBAR
+    ========================================== -->
+
+    <aside class="sidebar">
+
+    <div class="logo">
+        <div class="logo-icon">📚</div>
+
+        <div>
+            <strong>StudyFlow</strong>
+            <span>Student Study Manager</span>
+        </div>
+    </div>
+
+    <div class="profile-card">
+
+    <div class="profile-avatar" id="profileAvatar">S</div>
+
+    <div class="profile-info">
+        <strong id="profileName">Student</strong>
+        <span>B.Tech CSE IoT</span>
+    </div>
+
+    <button id="editProfileBtn" class="edit-profile-btn">
+        ✏️
+    </button>
+
+</div>
+
+    <nav>
+
+
+
+        <!-- NAVIGATION -->
+
+        <nav>
+
+    <a href="#dashboard" class="nav-link active">
+        🏠 Dashboard
+    </a>
+
+    <a href="#subjects" class="nav-link">
+        📚 Subjects
+    </a>
+
+    <a href="#tasks" class="nav-link">
+        ✅ Tasks
+    </a>
+
+    <a href="#timetable" class="nav-link">
+        📅 Timetable
+    </a>
+
+    <a href="#notes" class="nav-link">
+        📝 Notes
+    </a>
+
+    <a href="#pomodoro" class="nav-link">
+        ⏱ Pomodoro
+    </a>
+
+    <a href="#progress" class="nav-link">
+        📊 Progress
+    </a>
+
+</nav>
+
+        <!-- SIDEBAR BOTTOM -->
+
+        <div class="sidebar-bottom">
+            <a href="#settings" id="sidebarSettingsBtn">
+                ⚙ Settings
+            </a>
+        </div>
+        <div class="settings-card account-settings">
+
+    <h3>Account</h3>
+
+    <p class="account-status">
+         log in.
+    </p>
+
+    <button id="logoutBtn" class="logout-btn">
+        🚪 Logout
+    </button>
+
+</div>
+
+    </aside>
+
+
+
+    <!-- =========================================
+         MAIN CONTENT
+    ========================================== -->
+
+    <main class="main">
+
+
+        <!-- =====================================
+             TOP BAR
+        ====================================== -->
+
+        <header class="topbar">
+
+    <div class="topbar-left">
+
+        <button
+            id="menuBtn"
+            class="menu-btn"
+            aria-label="Open menu">
+
+            ☰
+
+        </button>
+
+        <div>
+
+            <h1>
+                Good Morning,
+                <span id="studentGreeting">Student</span> 👋
+            </h1>
+
+            <p>
+                Let's make today productive.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <button
+        id="themeBtn"
+        class="theme-btn">
+
+        🌙
+
+    </button>
+
+</header>
+
+
+
+        <!-- =====================================
+             STAT CARDS
+        ====================================== -->
+
+        <section class="stats" id="dashboard">
+
+
+            <!-- TOTAL SUBJECTS -->
+
+            <div class="stat-card">
+
+                <div class="stat-icon blue">
+                    📚
+                </div>
+
+                <div>
+
+                    <p>
+                        Total Subjects
+                    </p>
+
+                    <h2 id="totalSubjects">
+                        0
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- PENDING TASKS -->
+
+            <div class="stat-card">
+
+                <div class="stat-icon orange">
+                    📝
+                </div>
+
+                <div>
+
+                    <p>
+                        Pending Tasks
+                    </p>
+
+                    <h2 id="pendingTasks">
+                        0
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- COMPLETED TASKS -->
+
+            <div class="stat-card">
+
+                <div class="stat-icon green">
+                    ✅
+                </div>
+
+                <div>
+
+                    <p>
+                        Completed
+                    </p>
+
+                    <h2 id="completedTasks">
+                        0
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- STUDY PROGRESS -->
+
+            <div class="stat-card">
+
+                <div class="stat-icon purple">
+                    📈
+                </div>
+
+                <div>
+
+                    <p>
+                        Study Progress
+                    </p>
+
+                    <h2 id="studyProgress">
+                        0%
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =====================================
+             DASHBOARD GRID
+        ====================================== -->
+
+        <section class="dashboard-grid">
+
+
+
+            <!-- =================================
+                 QUICK ACTIONS
+            ================================== -->
+
+            <div class="panel" id="subjects">
+
+                <div class="panel-heading">
+
+                    <h2>
+                        Quick Actions
+                    </h2>
+
+                </div>
+
+
+                <div class="quick-actions">
+
+
+                    <!-- ADD SUBJECT -->
+
+                    <button
+                        class="action-card"
+                        id="quickAddSubject">
+
+                        <span>
+                            📚
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Add Subject
+                            </strong>
+
+                            <small>
+                                Add a new subject
+                            </small>
+
+                        </div>
+
+                    </button>
+
+
+
+                    <!-- ADD TASK -->
+
+                    <button
+                        class="action-card"
+                        id="quickAddTask">
+
+                        <span>
+                            ✅
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Add Task
+                            </strong>
+
+                            <small>
+                                Create a study task
+                            </small>
+
+                        </div>
+
+                    </button>
+
+
+
+                    <!-- TIMETABLE -->
+
+                    <button
+                        class="action-card"
+                        id="quickTimetable">
+
+                        <span>
+                            📅
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Timetable
+                            </strong>
+
+                            <small>
+                                Manage your schedule
+                            </small>
+
+                        </div>
+
+                    </button>
+
+
+
+                    <!-- NOTES -->
+
+                    <button
+                        class="action-card"
+                        id="quickNotes">
+
+                        <span>
+                            📝
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                Add Note
+                            </strong>
+
+                            <small>
+                                Save your study notes
+                            </small>
+
+                        </div>
+
+                    </button>
+
+
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================
+                 SUBJECTS
+            ================================== -->
+
+            <div class="panel" id="subjects">
+
+
+                <div class="panel-heading">
+
+                    <h2>
+                        My Subjects
+                    </h2>
+
+                    <button id="addSubjectBtn">
+                        + Add Subject
+                    </button>
+
+                </div>
+
+
+                <!-- SUBJECT FORM -->
+
+                <div
+                    id="subjectForm"
+                    class="subject-form">
+
+                    <input
+                        type="text"
+                        id="subjectInput"
+                        placeholder="Enter subject name...">
+
+                    <button id="saveSubjectBtn">
+                        Add
+                    </button>
+
+                </div>
+
+
+                <!-- SUBJECT LIST -->
+
+                <div
+                    id="subjectList"
+                    class="subject-list">
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================
+                 TASKS
+            ================================== -->
+
+            <div class="panel" id="tasks">
+
+                <div class="panel-heading">
+
+                    <h2>
+                        Today's Tasks
+                    </h2>
+
+                    <button id="addTaskBtn">
+                        + Add Task
+                    </button>
+
+                </div>
+
+
+                <!-- TASK FORM -->
+
+                <div
+                    id="taskForm"
+                    class="task-form">
+
+                    <input
+                        type="text"
+                        id="taskInput"
+                        placeholder="Enter your task...">
+
+                    <button id="saveTaskBtn">
+                        Add
+                    </button>
+
+                </div>
+
+
+                <!-- TASK LIST -->
+
+                <div
+                    id="taskList"
+                    class="task-list">
+                </div>
+
+            </div>
+
+
+
+            <!-- =================================
+                 NOTES
+            ================================== -->
+
+            <div class="panel" id="notes">
+
+                <div class="panel-heading">
+
+                    <h2>
+                        📝 My Notes
+                    </h2>
+
+                    <button id="addNoteBtn">
+                        + Add Note
+                    </button>
+
+                </div>
+
+
+                <!-- NOTE FORM -->
+
+                <div
+                    id="noteForm"
+                    class="note-form">
+
+                    <input
+                        type="text"
+                        id="noteTitle"
+                        placeholder="Note title...">
+
+
+                    <textarea
+                        id="noteContent"
+                        placeholder="Write your note here..."></textarea>
+
+
+                    <button id="saveNoteBtn">
+                        Save Note
+                    </button>
+
+                </div>
+
+
+                <!-- NOTES LIST -->
+
+                <div
+                    id="notesList"
+                    class="notes-list">
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =====================================
+             BOTTOM GRID
+        ====================================== -->
+
+        <section class="bottom-grid">
+
+
+
+            <!-- =================================
+                 TIMETABLE
+            ================================== -->
+
+            <div class="panel" id="timetable">
+
+
+                <div class="panel-heading">
+
+                    <h2>
+                        Today's Timetable
+                    </h2>
+
+                    <button id="addScheduleBtn">
+                        + Add
+                    </button>
+
+                </div>
+
+
+                <!-- TIMETABLE FORM -->
+
+                <div
+                    id="scheduleForm"
+                    class="schedule-form">
+
+
+                    <input
+                        type="time"
+                        id="scheduleTime">
+
+
+                    <input
+                        type="text"
+                        id="scheduleSubject"
+                        placeholder="Subject">
+
+
+                    <select id="scheduleType">
+
+                        <option value="Class">
+                            Class
+                        </option>
+
+                        <option value="Study">
+                            Study
+                        </option>
+
+                        <option value="Practice">
+                            Practice
+                        </option>
+
+                    </select>
+
+
+                    <button id="saveScheduleBtn">
+                        Add
+                    </button>
+
+                </div>
+
+
+                <!-- TIMETABLE TABLE -->
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Time
+                            </th>
+
+                            <th>
+                                Subject
+                            </th>
+
+                            <th>
+                                Type
+                            </th>
+
+                            <th>
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="scheduleList">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+
+            <!-- =================================
+                 STUDY STREAK
+            ================================== -->
+
+            <div class="panel streak-panel">
+
+                <h2>
+                    🔥 Study Streak
+                </h2>
+
+
+                <div class="streak-number">
+                    7
+                </div>
+
+
+                <p>
+                    Days in a row
+                </p>
+
+
+                <div class="week">
+
+                    <span>
+                        M
+                    </span>
+
+                    <span>
+                        T
+                    </span>
+
+                    <span>
+                        W
+                    </span>
+
+                    <span>
+                        T
+                    </span>
+
+                    <span>
+                        F
+                    </span>
+
+                    <span>
+                        S
+                    </span>
+
+                    <span>
+                        S
+                    </span>
+
+                </div>
+
+
+                <p class="motivation">
+                    Keep going! You're doing great. 🚀
+                </p>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =====================================
+             POMODORO TIMER
+        ====================================== -->
+        <section class="bottom-grid">
+
+            <!-- =====================================
+             POMODORO TIMER
+        ====================================== -->
+        <section class="bottom-grid">
+
+            <div class="panel pomodoro-panel" id="pomodoro">
+
+                <div class="panel-heading">
+                    <h2>⏱ Pomodoro Timer</h2>
+                </div>
+
+                <div class="pomodoro">
+
+                    <!-- TASK INPUT -->
+                    <div class="pomodoro-topline">
+                        <div class="pomodoro-context">
+                            <span class="pomodoro-eyebrow">FOCUS WORKSPACE</span>
+                            <label for="studyTaskInput">What are you working on?</label>
+                            <input
+                                type="text"
+                                id="studyTaskInput"
+                                placeholder="e.g. Java, DBMS, DSA..."
+                            >
+                        </div>
+
+                        <div class="pomodoro-live-badge" id="pomodoroBadge">
+                            <span></span> Ready to focus
+                        </div>
+                    </div>
+
+                    <!-- TIMER MODE -->
+                    <div class="timer-mode">
+                        <button type="button" id="studyModeBtn" class="active">
+                            📚 Study
+                        </button>
+                        <button type="button" id="breakModeBtn">
+                            ☕ Break
+                        </button>
+                    </div>
+
+                    <!-- TIMER DISPLAY -->
+                    <div class="timer-stage">
+                        <div class="timer-ring" id="timerRing">
+                            <div class="timer-ring-inner">
+                                <span id="timerModeLabel" class="timer-mode-label">
+                                    FOCUS SESSION
+                                </span>
+                                <div id="timerDisplay" class="timer-display">
+                                    00:00
+                                </div>
+                                <span id="timerCaption" class="timer-caption">
+                                    Target: 25m
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TIMER STATUS -->
+                    <p id="timerStatus">
+                        Focus on your study session.
+                    </p>
+
+                    <!-- TIMER BUTTONS -->
+                    <div class="timer-buttons">
+                        <button type="button" id="startTimerBtn">▶ Start</button>
+                        <button type="button" id="pauseTimerBtn">⏸ Pause</button>
+                        <button type="button" id="resetTimerBtn">🔄 Reset</button>
+                    </div>
+
+                    <!-- TIMER SETTINGS -->
+                    <div class="pomodoro-settings">
+                        <div class="pomodoro-settings-heading">
+                            <div>
+                                <strong>Session Settings</strong>
+                                <small>Set study (hours & minutes) and break duration</small>
+                            </div>
+                            <button type="button" id="resetDefaultSettingsBtn" class="default-reset-btn">
+                                ↺ Default (25m / 5m)
+                            </button>
+                        </div>
+
+                        <div class="pomodoro-setting-grid">
+                            <!-- STUDY DURATION (HOURS + MINUTES) -->
+                            <div class="setting-box">
+                                <label>📚 Study Duration</label>
+                                <div class="hm-inputs">
+                                    <div class="duration-input-wrap">
+                                        <input type="number" id="studyHoursInput" min="0" max="10" value="0">
+                                        <span>hrs</span>
+                                    </div>
+                                    <div class="duration-input-wrap">
+                                        <input type="number" id="studyMinutesInput" min="0" max="59" value="25">
+                                        <span>min</span>
+                                    </div>
+                                </div>
+                                <div class="preset-pills" id="studyPresets">
+                                    <button type="button" data-mins="25">25m</button>
+                                    <button type="button" data-mins="45">45m</button>
+                                    <button type="button" data-mins="60">1h</button>
+                                    <button type="button" data-mins="120">2h</button>
+                                </div>
+                            </div>
+
+                            <!-- BREAK DURATION (5, 10, 15, 20, 30 MINS + CUSTOM) -->
+                            <div class="setting-box">
+                                <label>☕ Break Duration</label>
+                                <div class="duration-input-wrap">
+                                    <input type="number" id="breakDurationInput" min="1" max="180" value="5">
+                                    <span>minutes</span>
+                                </div>
+                                <div class="preset-pills" id="breakPresets">
+                                    <button type="button" data-mins="5" class="active-pill">5m</button>
+                                    <button type="button" data-mins="10">10m</button>
+                                    <button type="button" data-mins="15">15m</button>
+                                    <button type="button" data-mins="20">20m</button>
+                                    <button type="button" data-mins="30">30m</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="saveTimerSettingsBtn" class="apply-full-btn">
+                            Apply Settings
+                        </button>
+                    </div>
+
+                    <!-- DAILY STUDY TRACKER -->
+                    <div class="session-info">
+                        <div class="session-stat">
+                            <span>⏱</span>
+                            <strong id="todayStudyTime">0h 00m</strong>
+                            <span>Studied Today</span>
+                        </div>
+
+                        <div class="session-stat">
+                            <span>🎯</span>
+                            <strong id="sessionCount">0</strong>
+                            <span>Completed Sessions</span>
+                        </div>
+
+                        <div class="session-stat">
+                            <span>📅</span>
+                            <strong id="totalStudyTime">0h 00m</strong>
+                            <span>Total Study Time</span>
+                        </div>
+                    </div>
+
+                    <!-- TASK STATUS -->
+                    <div id="pomodoroTaskStatus" class="pomodoro-history-note">
+                        Your study time is saved automatically.
+                    </div>
+
+                </div>
+            </div>
+
+    
+
+        </section>
+
+        <!-- SETTINGS -->
+        
+        </section>
+         <!-- =====================================
+             SETTINGS PAGE
+        ====================================== -->
+        
+            <!-- =====================================
+             SETTINGS PAGE
+        ====================================== -->
+        <!-- =====================================
+             SETTINGS PAGE (POLISHED)
+        ====================================== -->
+        <section class="settings-section" id="settings" style="display: none;">
+
+            <div class="settings-topbar">
+                <button type="button" id="backToHomeBtn" class="back-home-btn">
+                    ← Back to Dashboard
+                </button>
+            </div>
+
+            <div class="panel settings-panel">
+                <div class="settings-header">
+                    <h2>⚙️ Settings</h2>
+                    <p class="settings-subtitle">Manage your student profile, appearance, and workspace data</p>
+                </div>
+
+                <!-- CATEGORY 1: PROFILE -->
+                <div class="settings-group">
+                    <span class="settings-group-title">STUDENT PROFILE</span>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-icon blue">👤</div>
+                            <div class="setting-text">
+                                <strong>Display Name</strong>
+                                <small>Shown on your profile card and dashboard greeting</small>
+                            </div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="text" id="studentNameInput" placeholder="Enter your name...">
+                            <button type="button" id="saveNameBtn" class="primary-setting-btn">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-icon green">🎓</div>
+                            <div class="setting-text">
+                                <strong>Course / Branch</strong>
+                                <small>Displayed below your name in the sidebar</small>
+                            </div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="text" id="studentCourseInput" placeholder="e.g. B.Tech CSE IoT">
+                            <button type="button" id="saveCourseBtn" class="primary-setting-btn">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CATEGORY 2: PREFERENCES -->
+                <div class="settings-group">
+                    <span class="settings-group-title">PREFERENCES</span>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-icon purple">🌙</div>
+                            <div class="setting-text">
+                                <strong>Dark Mode</strong>
+                                <small>Switch between light and dark theme across StudyFlow</small>
+                            </div>
+                        </div>
+                        <label class="theme-switch" title="Toggle Dark Mode">
+                            <input type="checkbox" id="settingsThemeCheckbox">
+                            <span class="theme-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- CATEGORY 3: DANGER ZONE -->
+                <div class="settings-group">
+                    <span class="settings-group-title danger-label">DANGER ZONE</span>
+
+                    <div class="setting-item danger-card">
+                        <div class="setting-info">
+                            <div class="setting-icon orange">🗑️</div>
+                            <div class="setting-text">
+                                <strong>Clear Study Data</strong>
+                                <small>Permanently delete all subjects, tasks, notes, and timetable</small>
+                            </div>
+                        </div>
+                        <button type="button" id="clearDataBtn" class="danger-outline-btn">
+                            Clear Data
+                        </button>
+                    </div>
+
+                    <div class="setting-item danger-card">
+                        <div class="setting-info">
+                            <div class="setting-icon red">🔄</div>
+                            <div class="setting-text">
+                                <strong>Reset StudyFlow</strong>
+                                <small>Erase all local data and restore default settings</small>
+                            </div>
+                        </div>
+                        <button type="button" id="resetAppBtn" class="danger-btn">
+                            Reset App
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+        
+
+    
+
+    <!-- =========================================
+         JAVASCRIPT
+    ========================================== -->
+    <script src="script.js"></script>
+
+</body>
+</html>
