@@ -1734,28 +1734,31 @@ navLinks.forEach(link => {
 // STUDENT NAME ON DASHBOARD
 // =====================================================
 
-const studentGreeting =
-    document.getElementById("studentGreeting");
-
+const studentGreeting = document.getElementById("studentGreeting");
 
 function loadStudentGreeting() {
+    const savedName = localStorage.getItem("studyflowStudentName") || "Student";
+    if (!studentGreeting) return;
 
-    const savedName =
-        localStorage.getItem("studyflowStudentName");
+    const hour = new Date().getHours();
+    let greetingText = "Good Morning";
 
-
-    if (savedName) {
-
-        studentGreeting.textContent =
-            savedName;
-
+    if (hour >= 5 && hour < 12) {
+        greetingText = "Good Morning";
+    } else if (hour >= 12 && hour < 17) {
+        greetingText = "Good Afternoon";
+    } else if (hour >= 17 && hour < 21) {
+        greetingText = "Good Evening";
     } else {
-
-        studentGreeting.textContent =
-            "Student";
-
+        greetingText = "Good Night";
     }
 
+    const heading = studentGreeting.parentElement;
+    if (heading) {
+        heading.innerHTML = `${greetingText}, <span id="studentGreeting">${savedName}</span> 👋`;
+    } else {
+        studentGreeting.textContent = savedName;
+    }
 }
 
 
