@@ -2199,3 +2199,461 @@ if (logoutBtn) {
         showAuthMessage("loginMessage", "Logged out safely. All data synced!", "success");
     });
 }
+
+
+// Ai wala part
+
+
+// =====================================================
+// AI SMART QUIZ GENERATOR (PDF + IMAGE OCR + MCQ ENGINE)
+// =====================================================
+let currentGeneratedQuiz = [];
+
+function showExtractStatus(msg, isError = false) {
+    const statusEl = document.getElementById("quizExtractStatus");
+    if (!statusEl) return;
+    statusEl.style.display = "block";
+    statusEl.textContent = msg;
+    statusEl.style.background = isError ? "rgba(239, 68, 68, 0.14)" : "rgba(56, 189, 248, 0.12)";
+    statusEl.style.borderColor = isError ? "rgba(239, 68, 68, 0.35)" : "rgba(56, 189, 248, 0.3)";
+    statusEl.style.color = isError ? "#fca5a5" : "#7dd3fc";
+}
+
+// 1. PDF & TXT Upload Handler
+const quizPdfUpload = document.getElementById("quizPdfUpload");
+if (quizPdfUpload) {
+    quizPdfUpload.addEventListener("change", async function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const topicInput = document.getElementById("quizTopicTitleInput");
+        if (topicInput && !topicInput.value.trim()) {
+            topicInput.value = file.name.replace(/\.[^/.]+$/, "");
+        }
+
+        if (file.type === "text/plain") {
+            const text = await file.text();
+            document.getElementById("quizNotesTextarea").value = text;
+            showExtractStatus(`✅ Loaded "${file.name}" successfully!`);
+            return;
+        }
+
+        if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+            try {
+                showExtractStatus(`⏳ Extracting text from "${file.name}"...`);
+                const arrayBuffer = await file.arrayBuffer();
+                if (window.pdfjsLib) {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = "";
+                    const maxPages = Math.min(pdf.numPages, 15);
+                    for (let i = 1; i <= maxPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        fullText += content.items.map(item => item.str).join(" ") + "\n\n";
+                    }
+                    document.getElementById("quizNotesTextarea").value = fullText.trim();
+                    showExtractStatus(`✅ Extracted text from ${maxPages} page(s) of "${file.name}"!`);
+                } else {
+                    showExtractStatus("⚠️ PDF reader library loading, please try again in a second.", true);
+                }
+            } catch (err) {
+                showExtractStatus("❌ Could not read PDF. Try pasting text or uploading a clear image.", true);
+            }
+        }
+    });
+}
+
+// 2. Handwritten / Book Image OCR Handler
+const quizImageUpload = document.getElementById("quizImageUpload");
+if (quizImageUpload) {
+    quizImageUpload.addEventListener("change", async function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const topicInput = document.getElementById("quizTopicTitleInput");
+        if (topicInput && !topicInput.value.trim()) {
+            topicInput.value = file.name.replace(/\.[^/.]+$/, "");
+        }
+
+        try {
+            showExtractStatus(`🔍 Scanning handwritten/book text from "${file.name}" (OCR)...`);
+            if (window.Tesseract) {
+                const result = await Tesseract.recognize(file, "eng");
+                const extracted = result.data.text.trim();
+                if (extracted.length < 15) {
+                    showExtractStatus("⚠️ Very little text detected. Try a clearer, well-lit photo.", true);
+                } else {
+                    const cleaned = cleanExtractedNotesText(extracted);
+                    document.getElementById("quizNotesTextarea").value = cleaned;
+                    showExtractStatus(`✅ OCR Scan Complete! Extracted ${cleaned.split(/\s+/).length} words from image.`);
+                }
+            } else {
+                showExtractStatus("⚠️ OCR engine is still loading, please wait 2 seconds.", true);
+            }
+        } catch (err) {
+            showExtractStatus("❌ Image scan failed. Please try another image.", true);
+        }
+    });
+}
+
+// 3. Demo Sample Notes Button (Great for Live Presentation)
+const loadSampleNotesBtn = document.getElementById("loadSampleNotesBtn");
+if (loadSampleNotesBtn) {
+    loadSampleNotesBtn.addEventListener("click", () => {
+        document.getElementById("quizTopicTitleInput").value = "DBMS & Operating Systems";
+        document.getElementById("quizNotesTextarea").value =
+            "Normalization is the process of organizing data in a database to reduce redundancy and improve data integrity. " +
+            "A Primary Key uniquely identifies each record in a relational database table and cannot contain NULL values. " +
+            "Deadlock occurs in an operating system when two or more processes are blocked forever, each waiting for a resource held by another. " +
+            "Virtual Memory allows a computer to compensate for physical memory shortages by temporarily transferring pages from RAM to disk storage. " +
+            "Indexing is a data structure technique used to quickly locate and access data in a database without scanning every row. " +
+            "ACID properties stand for Atomicity, Consistency, Isolation, and Durability, ensuring reliable database transactions.";
+        showExtractStatus("✨ Sample CS notes loaded! Click 'Generate MCQ Test' to see it in action.");
+    });
+}
+ // 4. PROFESSIONAL EXAM-STYLE MCQ GENERATION ENGINE (NO FILL-IN-THE-BLANK)
+function cleanExtractedNotesText(rawText) {
+    return rawText
+        // Remove OCR garbage symbols & isolated single characters
+        .replace(/[^\w\s.,:;()-]/g, " ")
+        .replace(/\b[a-zA-Z0-9]\b/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function buildSmartMCQsFromText(rawText, count, difficulty) {
+    const cleanedText = cleanExtractedNotesText(rawText);
+
+    // Built-in Academic Concept Bank (Auto-triggers when handwritten OCR has sparse/noisy text)
+    const conceptBank = [
+        {
+            keywords: ["artificial", "intelligence", "ai", "machine", "learning", "neural"],
+            q: "Which of the following best defines Artificial Intelligence (AI)?",
+            correct: "Simulation of human intelligence processes such as learning, reasoning, and self-correction by computer systems",
+            wrong: [
+                "Manual hardware assembly and physical circuit maintenance in mainframe servers",
+                "A static database storage format used exclusively for offline spreadsheets",
+                "Low-level binary compilation of assembly code without decision-making logic"
+            ],
+            exp: "Artificial Intelligence enables machines to mimic human cognitive functions like learning and problem-solving."
+        },
+        {
+            keywords: ["artificial", "intelligence", "ai", "turing", "agent", "intelligent"],
+            q: "What is the primary role of an Intelligent Agent in Artificial Intelligence?",
+            correct: "Perceiving its environment through sensors and acting upon it using actuators to achieve goals",
+            wrong: [
+                "Compressing video files to reduce network bandwidth consumption",
+                "Formatting hard disk partitions during operating system installation",
+                "Encrypting local browser cookies using symmetric key algorithms"
+            ],
+            exp: "An intelligent agent perceives its environment and takes rational actions to maximize its chance of success."
+        },
+        {
+            keywords: ["artificial", "intelligence", "machine", "learning", "supervised", "data"],
+            q: "How does Supervised Learning differ from Unsupervised Learning in AI?",
+            correct: "Supervised learning trains models using labeled input-output pairs, whereas unsupervised learning finds patterns in unlabeled data",
+            wrong: [
+                "Supervised learning requires no training data, while unsupervised learning needs manual rules for every output",
+                "Supervised learning only works on text files, while unsupervised learning only processes audio",
+                "Both methods strictly require identical labeled datasets before execution"
+            ],
+            exp: "Labeled training datasets are the defining characteristic of supervised machine learning."
+        },
+        {
+            keywords: ["artificial", "intelligence", "neural", "deep", "network"],
+            q: "Which component of AI is inspired by the structure and function of the human brain?",
+            correct: "Artificial Neural Networks (ANN)",
+            wrong: [
+                "Relational Database Management Systems (RDBMS)",
+                "Round-Robin CPU Process Schedulers",
+                "Domain Name System (DNS) Resolvers"
+            ],
+            exp: "Artificial Neural Networks consist of interconnected layers of nodes modeled after biological neurons."
+        },
+        {
+            keywords: ["artificial", "intelligence", "nlp", "natural", "language", "vision"],
+            q: "Which branch of Artificial Intelligence focuses on enabling computers to understand and generate human language?",
+            correct: "Natural Language Processing (NLP)",
+            wrong: [
+                "Computer Graphics Rasterization",
+                "Virtual Memory Paging",
+                "Network Packet Switching"
+            ],
+            exp: "NLP bridges human communication and computer understanding through text and speech analysis."
+        },
+        {
+            keywords: ["normalization", "database", "dbms", "sql", "primary", "acid"],
+            q: "What is the primary objective of Database Normalization?",
+            correct: "Minimizing data redundancy and eliminating insertion, update, and deletion anomalies",
+            wrong: [
+                "Duplicating tables across multiple servers to increase storage usage",
+                "Removing all primary and foreign keys to speed up unindexed scans",
+                "Converting relational tables into unstructured plain-text logs"
+            ],
+            exp: "Normalization structures relational tables cleanly to preserve data integrity."
+        },
+        {
+            keywords: ["deadlock", "operating", "virtual", "memory", "process", "os"],
+            q: "Which condition occurs when two or more processes wait indefinitely for resources held by each other?",
+            correct: "Deadlock",
+            wrong: [
+                "Cache Hit Optimization",
+                "Context Spooling",
+                "Asynchronous Pipelining"
+            ],
+            exp: "Deadlock happens when circular wait and mutual exclusion prevent any competing process from proceeding."
+        }
+    ];
+
+    const mcqs = [];
+    const lowerText = cleanedText.toLowerCase();
+
+    // 1. Extract clean definition-based MCQs directly from well-formed sentences in notes
+    const sentences = cleanedText
+        .split(/[.!?]+/)
+        .map(s => s.trim())
+        .filter(s => {
+            const words = s.split(/\s+/);
+            const alphaWords = words.filter(w => /^[a-zA-Z]{3,}$/.test(w));
+            return words.length >= 6 && words.length <= 32 && (alphaWords.length / words.length) >= 0.75;
+        });
+
+    const allCleanDefinitions = sentences.map(s => {
+        const match = s.match(/^([A-Z][a-zA-Z0-9\s-]{2,30}?)\s+(?:is|are|refers to|means|allows|enables|occurs)\s+(.+)$/i);
+        if (match) {
+            return { term: match[1].trim(), desc: match[2].trim(), full: s };
+        }
+        return null;
+    }).filter(Boolean);
+
+    const genericDistractorStatements = [
+        "A hardware-level BIOS configuration used solely during system boot initialization",
+        "An outdated analog signal modulation protocol replaced by fiber-optic switching",
+        "A manual file compression technique that removes metadata without indexing",
+        "A temporary browser cache mechanism restricted to static stylesheet rendering"
+    ];
+
+    allCleanDefinitions.forEach((item, idx) => {
+        if (mcqs.length >= count) return;
+        const otherDescs = allCleanDefinitions
+            .filter((_, i) => i !== idx)
+            .map(d => d.desc.charAt(0).toUpperCase() + d.desc.slice(1));
+
+        const wrongPool = [...otherDescs, ...genericDistractorStatements]
+            .filter(w => w.toLowerCase() !== item.desc.toLowerCase())
+            .slice(0, 3);
+
+        const correctFormatted = item.desc.charAt(0).toUpperCase() + item.desc.slice(1);
+        const options = [correctFormatted, ...wrongPool].sort(() => Math.random() - 0.5);
+
+        const questionTemplates = [
+            `Which of the following accurately describes "${item.term}"?`,
+            `Based on your study notes, what is the key function of ${item.term}?`,
+            `Identify the correct statement regarding ${item.term}:`
+        ];
+
+        mcqs.push({
+            question: questionTemplates[idx % questionTemplates.length],
+            options: options,
+            answer: correctFormatted,
+            explanation: `${item.full}.`
+        });
+    });
+
+    // 2. Match detected keywords against Concept Bank (especially helpful for handwritten OCR photos!)
+    if (mcqs.length < count) {
+        const matchedBank = conceptBank.filter(entry =>
+            entry.keywords.some(kw => lowerText.includes(kw))
+        );
+
+        for (const item of matchedBank) {
+            if (mcqs.length >= count) break;
+            if (mcqs.some(q => q.question === item.q)) continue;
+
+            const options = [item.correct, ...item.wrong].sort(() => Math.random() - 0.5);
+            mcqs.push({
+                question: item.q,
+                options: options,
+                answer: item.correct,
+                explanation: item.exp
+            });
+        }
+    }
+
+    // 3. Fallback: If general notes were pasted without "X is Y" format, create statement-verification MCQs
+    if (mcqs.length < count && sentences.length > 0) {
+        for (let i = 0; i < sentences.length && mcqs.length < count; i++) {
+            const stmt = sentences[i].charAt(0).toUpperCase() + sentences[i].slice(1);
+            if (mcqs.some(q => q.answer === stmt)) continue;
+
+            const options = [
+                stmt,
+                ...genericDistractorStatements.slice(0, 3)
+            ].sort(() => Math.random() - 0.5);
+
+            mcqs.push({
+                question: `Which of the following statements is directly supported by your study notes?`,
+                options: options,
+                answer: stmt,
+                explanation: `Verified from notes: "${stmt}."`
+            });
+        }
+    }
+
+    return mcqs;
+}
+
+
+
+// 5. Generate Quiz Button Click
+const generateAiQuizBtn = document.getElementById("generateAiQuizBtn");
+if (generateAiQuizBtn) {
+    generateAiQuizBtn.addEventListener("click", () => {
+        const text = document.getElementById("quizNotesTextarea")?.value.trim() || "";
+        if (text.length < 40) {
+            alert("Please upload a PDF/Image or paste at least 3-4 sentences of study notes first!");
+            return;
+        }
+
+        const count = Number(document.getElementById("quizQuestionCount")?.value || 5);
+        const difficulty = document.getElementById("quizDifficultySelect")?.value || "Medium";
+        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "Study Notes Quiz";
+
+        const questions = buildSmartMCQsFromText(text, count, difficulty);
+        if (questions.length === 0) {
+            alert("Could not generate questions from this text. Please add more descriptive sentences.");
+            return;
+        }
+
+        currentGeneratedQuiz = questions;
+
+        document.getElementById("activeQuizHeaderTitle").textContent = `📝 ${topic}`;
+        document.getElementById("activeQuizMeta").textContent = `${questions.length} Questions • ${difficulty} Difficulty`;
+
+        const container = document.getElementById("quizQuestionsContainer");
+        container.innerHTML = questions.map((q, qIdx) => `
+            <div style="padding: 18px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
+                <div style="font-weight: 600; color: #f8fafc; margin-bottom: 12px; font-size: 0.95rem;">
+                    <span style="color: #818cf8; margin-right: 6px;">Q${qIdx + 1}.</span> ${q.question}
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px;">
+                    ${q.options.map((opt, oIdx) => `
+                        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; color: #e2e8f0; font-size: 0.88rem;">
+                            <input type="radio" name="quiz_q_${qIdx}" value="${opt}" style="accent-color: #6366f1;">
+                            <span><strong>${String.fromCharCode(65 + oIdx)}.</strong> ${opt}</span>
+                        </label>
+                    `).join("")}
+                </div>
+            </div>
+        `).join("");
+
+        document.getElementById("quizSetupBox").style.display = "none";
+        document.getElementById("quizResultArea").style.display = "none";
+        document.getElementById("quizTestArea").style.display = "flex";
+    });
+}
+
+// 6. Submit Quiz & Calculate Score
+const submitAiQuizBtn = document.getElementById("submitAiQuizBtn");
+if (submitAiQuizBtn) {
+    submitAiQuizBtn.addEventListener("click", () => {
+        if (currentGeneratedQuiz.length === 0) return;
+
+        let score = 0;
+        const reviewHtml = currentGeneratedQuiz.map((q, qIdx) => {
+            const selectedInput = document.querySelector(`input[name="quiz_q_${qIdx}"]:checked`);
+            const userAns = selectedInput ? selectedInput.value : "Not Answered";
+            const isCorrect = userAns.toLowerCase() === q.answer.toLowerCase();
+            if (isCorrect) score++;
+
+            return `
+                <div style="padding: 15px 18px; border-radius: 12px; background: ${isCorrect ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)"}; border: 1px solid ${isCorrect ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"};">
+                    <div style="font-weight: 600; color: #f8fafc; font-size: 0.92rem; margin-bottom: 6px;">
+                        ${isCorrect ? "✅" : "❌"} Q${qIdx + 1}. ${q.question}
+                    </div>
+                    <div style="font-size: 0.84rem; color: #cbd5e1; margin-bottom: 4px;">
+                        Your Answer: <strong style="color: ${isCorrect ? "#34d399" : "#f87171"};">${userAns}</strong>
+                        ${!isCorrect ? ` | Correct Answer: <strong style="color: #34d399;">${q.answer}</strong>` : ""}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">💡 ${q.explanation}</div>
+                </div>
+            `;
+        }).join("");
+
+        const total = currentGeneratedQuiz.length;
+        const accuracy = Math.round((score / total) * 100);
+        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "Study Notes Quiz";
+
+        document.getElementById("quizFinalScoreDisplay").textContent = `${score} / ${total}`;
+        document.getElementById("quizAccuracyBadge").textContent = `Accuracy: ${accuracy}%`;
+        document.getElementById("quizReviewContainer").innerHTML = reviewHtml;
+
+        const history = JSON.parse(localStorage.getItem("studyflowQuizHistory") || "[]");
+        history.push({
+            topic: topic,
+            score: score,
+            total: total,
+            accuracy: accuracy,
+            date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        });
+        localStorage.setItem("studyflowQuizHistory", JSON.stringify(history));
+        renderPastQuizScores();
+
+        document.getElementById("quizTestArea").style.display = "none";
+        document.getElementById("quizResultArea").style.display = "flex";
+    });
+}
+
+function renderPastQuizScores() {
+    const history = JSON.parse(localStorage.getItem("studyflowQuizHistory") || "[]");
+    const listEl = document.getElementById("pastQuizHistoryList");
+    const badgeEl = document.getElementById("pastQuizCountBadge");
+    if (badgeEl) badgeEl.textContent = `${history.length} ${history.length === 1 ? "test" : "tests"}`;
+    if (!listEl) return;
+
+    if (history.length === 0) {
+        listEl.innerHTML = `<p style="margin: 0; font-size: 0.84rem; color: #64748b; text-align: center; padding: 10px;">No mock tests taken yet. Generate your first quiz above!</p>`;
+        return;
+    }
+
+    listEl.innerHTML = history.slice().reverse().map(item => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 10px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(255,255,255,0.06);">
+            <div>
+                <div style="font-weight: 600; color: #f1f5f9; font-size: 0.9rem;">📝 ${item.topic}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">${item.date}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="padding: 4px 10px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700; font-size: 0.82rem;">
+                    ${item.score}/${item.total} (${item.accuracy}%)
+                </span>
+            </div>
+        </div>
+    `).join("");
+}
+
+const cancelQuizBtn = document.getElementById("cancelQuizBtn");
+if (cancelQuizBtn) {
+    cancelQuizBtn.addEventListener("click", () => {
+        document.getElementById("quizTestArea").style.display = "none";
+        document.getElementById("quizSetupBox").style.display = "flex";
+    });
+}
+
+const retakeNewQuizBtn = document.getElementById("retakeNewQuizBtn");
+if (retakeNewQuizBtn) {
+    retakeNewQuizBtn.addEventListener("click", () => {
+        document.getElementById("quizResultArea").style.display = "none";
+        document.getElementById("quizSetupBox").style.display = "flex";
+    });
+}
+
+// Sidebar link click par #aiQuiz ko smoothly dikhane ke liye
+document.querySelectorAll('a[href="#aiQuiz"]').forEach(link => {
+    link.addEventListener("click", () => {
+        const quizSec = document.getElementById("aiQuiz");
+        if (quizSec) quizSec.style.display = "block";
+    });
+});
+
+renderPastQuizScores();
