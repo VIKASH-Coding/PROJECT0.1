@@ -1198,370 +1198,242 @@ updateStats();
 // =====================================================
 
 // =====================================================
-// PROFESSIONAL STUDYFLOW POMODORO TIMER (COUNT-UP)
+// PRO STUDY HOURS TRACKER (DAILY / MONTHLY / YEARLY + GOAL)
 // =====================================================
-
-const timerDisplay = document.getElementById("timerDisplay");
-const timerStatus = document.getElementById("timerStatus");
-const startTimerBtn = document.getElementById("startTimerBtn");
-const pauseTimerBtn = document.getElementById("pauseTimerBtn");
-const resetTimerBtn = document.getElementById("resetTimerBtn");
-const studyModeBtn = document.getElementById("studyModeBtn");
-const breakModeBtn = document.getElementById("breakModeBtn");
-const sessionCount = document.getElementById("sessionCount");
-
-const studyHoursInput = document.getElementById("studyHoursInput");
-const studyMinutesInput = document.getElementById("studyMinutesInput");
-const breakDurationInput = document.getElementById("breakDurationInput");
-const saveTimerSettingsBtn = document.getElementById("saveTimerSettingsBtn");
-const resetDefaultSettingsBtn = document.getElementById("resetDefaultSettingsBtn");
-
-const studyPresetBtns = document.querySelectorAll("#studyPresets button");
-const breakPresetBtns = document.querySelectorAll("#breakPresets button");
-
-const studyTaskInput = document.getElementById("studyTaskInput");
-const todayStudyTime = document.getElementById("todayStudyTime");
-const totalStudyTime = document.getElementById("totalStudyTime");
-const timerRing = document.getElementById("timerRing");
-const timerModeLabel = document.getElementById("timerModeLabel");
-const timerCaption = document.getElementById("timerCaption");
-const pomodoroTaskStatus = document.getElementById("pomodoroTaskStatus");
-const pomodoroBadge = document.getElementById("pomodoroBadge");
-
-// TIMER VARIABLES
-let timerInterval = null;
-let isRunning = false;
-let currentMode = "study";
-
-// Default: 25 mins study, 5 mins break
-let studyDuration = Number(localStorage.getItem("studyflowStudyDuration")) || 25;
-let breakDuration = Number(localStorage.getItem("studyflowBreakDuration")) || 5;
-
-// Count-up: starts from 0 seconds
-let elapsedSeconds = 0;
-
-let completedSessions = Number(localStorage.getItem("studyflowPomodoroSessions")) || 0;
-
-const todayKey = new Date().toLocaleDateString("en-CA");
-let todaySeconds = Number(localStorage.getItem("studyflowTodaySeconds")) || 0;
-let allTimeSeconds = Number(localStorage.getItem("studyflowAllTimeSeconds")) || 0;
-let savedDate = localStorage.getItem("studyflowStudyDate") || todayKey;
-
-if (savedDate !== todayKey) {
-    todaySeconds = 0;
-    localStorage.setItem("studyflowTodaySeconds", "0");
-    localStorage.setItem("studyflowStudyDate", todayKey);
+function formatDurationHM(totalSeconds) {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    return `${hrs}h ${String(mins).padStart(2, "0")}m`;
 }
 
-// Sync Inputs & Presets with current durations
-function syncSettingsUI() {
-    const hrs = Math.floor(studyDuration / 60);
-    const mins = studyDuration % 60;
+function getStudyLogs() {
+    try {
+        return JSON.parse(localStorage.getItem("studyflowStudyLogs") || "[]");
+    } catch {
+        return [];
+    }
+}
 
-    studyHoursInput.value = hrs;
-    studyMinutesInput.value = mins;
-    breakDurationInput.value = breakDuration;
+function saveStudyLogs(logs) {
+    localStorage.setItem("studyflowStudyLogs", JSON.stringify(logs));
+    const stats = JSON.parse(localStorage.getItem("studyflowPomodoroStats") || "{}");
+    stats.logs = logs;
+    stats.todaySeconds = Number(localStorage.getItem("studyflowTodaySeconds") || 0);
+    stats.allTimeSeconds = Number(localStorage.getItem("studyflowAllTimeSeconds") || 0);
+    stats.dailyGoalHours = Number(localStorage.getItem("studyflowDailyGoalHours") || 4);
+    localStorage.setItem("studyflowPomodoroStats", JSON.stringify(stats));
 
-    studyPresetBtns.forEach(btn => {
-        btn.classList.toggle("active-pill", Number(btn.dataset.mins) === studyDuration);
+    if (typeof syncStudyDataToCloud === "function") {
+        syncStudyDataToCloud();
+    }
+}
+
+function updateDailyGoalUI(dailySecs) {
+    const goalSelect = document.getElementById("dailyStudyGoalSelect");
+    const savedGoal = Number(localStorage.getItem("studyflowDailyGoalHours") || 4);
+    if (goalSelect) goalSelect.value = String(savedGoal);
+
+    const completedHrs = dailySecs / 3600;
+    const pct = Math.min(100, Math.round((completedHrs / savedGoal) * 100));
+    const remainingHrs = Math.max(0, savedGoal - completedHrs);
+
+    const barEl = document.getElementById("dailyGoalProgressBar");
+    const pillEl = document.getElementById("goalStatusPill");
+    const progTextEl = document.getElementById("dailyGoalProgressText");
+    const remTextEl = document.getElementById("dailyGoalRemainingText");
+
+    if (barEl) barEl.style.width = `${pct}%`;
+    if (progTextEl) progTextEl.textContent = `${completedHrs.toFixed(1)} hrs completed today`;
+
+    if (pillEl) {
+        if (pct >= 100) {
+            pillEl.textContent = "🎉 Goal Achieved!";
+            pillEl.style.background = "rgba(16, 185, 129, 0.2)";
+            pillEl.style.color = "#34d399";
+        } else {
+            pillEl.textContent = `${pct}% Completed`;
+            pillEl.style.background = "rgba(56, 189, 248, 0.15)";
+            pillEl.style.color = "#38bdf8";
+        }
+    }
+
+    if (remTextEl) {
+        remTextEl.textContent = pct >= 100
+            ? "Target reached! Keep going 🚀"
+            : `${remainingHrs.toFixed(1)} hrs remaining`;
+    }
+}
+
+function renderStudyAnalyticsAndLogs() {
+    const logs = getStudyLogs();
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const currentMonthStr = todayStr.slice(0, 7);
+    const currentYearStr = todayStr.slice(0, 4);
+
+    let dailySecs = 0;
+    let monthlySecs = 0;
+    let yearlySecs = 0;
+    let allTimeSecs = 0;
+
+    logs.forEach(item => {
+        const secs = Math.round((Number(item.hours) || 0) * 3600);
+        allTimeSecs += secs;
+        if (item.date === todayStr) dailySecs += secs;
+        if (item.date && item.date.startsWith(currentMonthStr)) monthlySecs += secs;
+        if (item.date && item.date.startsWith(currentYearStr)) yearlySecs += secs;
     });
 
-    breakPresetBtns.forEach(btn => {
-        btn.classList.toggle("active-pill", Number(btn.dataset.mins) === breakDuration);
+    localStorage.setItem("studyflowTodaySeconds", dailySecs);
+    localStorage.setItem("studyflowAllTimeSeconds", allTimeSecs);
+
+    const todayEl = document.getElementById("todayStudyTime");
+    const monthEl = document.getElementById("monthlyStudyTime");
+    const yearEl = document.getElementById("yearlyStudyTime");
+    const totalEl = document.getElementById("totalStudyTime");
+
+    if (todayEl) todayEl.textContent = formatDurationHM(dailySecs);
+    if (monthEl) monthEl.textContent = formatDurationHM(monthlySecs);
+    if (yearEl) yearEl.textContent = formatDurationHM(yearlySecs);
+    if (totalEl) totalEl.textContent = formatDurationHM(allTimeSecs);
+
+    updateDailyGoalUI(dailySecs);
+
+    const listEl = document.getElementById("studyLogHistoryList");
+    const badgeEl = document.getElementById("studyLogCountBadge");
+    if (badgeEl) badgeEl.textContent = `${logs.length} ${logs.length === 1 ? "entry" : "entries"}`;
+
+    if (listEl) {
+        if (logs.length === 0) {
+            listEl.innerHTML = `<p style="margin: 0; font-size: 0.85rem; color: #64748b; text-align: center; padding: 16px;">No study sessions logged yet. Add your first session above!</p>`;
+            return;
+        }
+
+        listEl.innerHTML = logs.slice().reverse().map((log, revIdx) => {
+            const actualIndex = logs.length - 1 - revIdx;
+            const displayDate = new Date(log.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+            const sourceTag = log.source || "📘 Self Study";
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 15px; border-radius: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.07);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: rgba(16, 185, 129, 0.16); color: #34d399; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem;">✓</span>
+                        <div>
+                            <div style="font-size: 0.94rem; font-weight: 600; color: #f1f5f9;">${log.topic}</div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 0.76rem; color: #94a3b8;">
+                                <span>${displayDate}</span>
+                                <span>•</span>
+                                <span style="padding: 1px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.12); color: #7dd3fc;">${sourceTag}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="padding: 5px 12px; border-radius: 8px; background: rgba(99, 102, 241, 0.18); color: #a5b4fc; font-weight: 700; font-size: 0.84rem;">
+                            +${log.hours} hr${log.hours > 1 ? "s" : ""}
+                        </span>
+                        <button type="button" onclick="deleteStudyLogEntry(${actualIndex})" title="Delete entry"
+                            style="border: none; background: rgba(239, 68, 68, 0.14); color: #f87171; border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 0.8rem;">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+}
+
+function addManualStudyEntry() {
+    const topicInput = document.getElementById("studyLogTopicInput");
+    const sourceSelect = document.getElementById("studyLogSourceSelect");
+    const hoursInput = document.getElementById("studyLogHoursInput");
+
+    const hrs = parseFloat(hoursInput?.value);
+    if (!hrs || hrs <= 0 || hrs > 16) {
+        alert("Please enter valid study hours (0.25 to 16).");
+        return;
+    }
+
+    const topic = (topicInput?.value.trim()) || "Focused Study Session";
+    const source = sourceSelect?.value || "📘 Self Study";
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const logs = getStudyLogs();
+    logs.push({
+        id: Date.now(),
+        topic: topic,
+        source: source,
+        hours: hrs,
+        date: todayStr
+    });
+
+    saveStudyLogs(logs);
+    renderStudyAnalyticsAndLogs();
+
+    if (topicInput) topicInput.value = "";
+    if (hoursInput) hoursInput.value = "";
+    document.querySelectorAll(".quick-hour-chip").forEach(c => {
+        c.style.background = "rgba(99,102,241,0.12)";
+        c.style.color = "#a5b4fc";
     });
 }
 
-// Format 00:00 or 00:00:00
-function formatClock(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
+window.deleteStudyLogEntry = function (index) {
+    const logs = getStudyLogs();
+    logs.splice(index, 1);
+    saveStudyLogs(logs);
+    renderStudyAnalyticsAndLogs();
+};
 
-    if (hours > 0) {
-        return (
-            String(hours).padStart(2, "0") + ":" +
-            String(minutes).padStart(2, "0") + ":" +
-            String(remainingSeconds).padStart(2, "0")
-        );
-    }
-
-    return (
-        String(minutes).padStart(2, "0") + ":" +
-        String(remainingSeconds).padStart(2, "0")
-    );
-}
-
-// Format Target Label (e.g., 1h 30m or 25m)
-function formatTargetLabel(totalMinutes) {
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    if (h > 0 && m > 0) return `Target: ${h}h ${m}m`;
-    if (h > 0) return `Target: ${h}h`;
-    return `Target: ${m}m`;
-}
-
-// Format Total Study Hours
-function formatStudyTotal(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return hours + "h " + String(minutes).padStart(2, "0") + "m";
-}
-
-function saveStudyData() {
-    localStorage.setItem("studyflowPomodoroSessions", completedSessions);
-    localStorage.setItem("studyflowTodaySeconds", todaySeconds);
-    localStorage.setItem("studyflowAllTimeSeconds", allTimeSeconds);
-    localStorage.setItem("studyflowStudyDate", todayKey);
-}
-
-function updateStudyStats() {
-    todayStudyTime.textContent = formatStudyTotal(todaySeconds);
-    totalStudyTime.textContent = formatStudyTotal(allTimeSeconds);
-    sessionCount.textContent = completedSessions;
-}
-
-// UPDATE DISPLAY & PROGRESS RING (0% -> 100%)
-function updateTimerDisplay() {
-    timerDisplay.textContent = formatClock(elapsedSeconds);
-
-    const targetMins = currentMode === "study" ? studyDuration : breakDuration;
-    const totalTargetSeconds = targetMins * 60;
-
-    const progress = totalTargetSeconds > 0
-        ? Math.min((elapsedSeconds / totalTargetSeconds) * 100, 100)
-        : 0;
-
-    timerRing.style.setProperty("--timer-progress", progress + "%");
-    timerRing.classList.toggle("break-ring", currentMode === "break");
-
-    timerModeLabel.textContent = currentMode === "study" ? "FOCUS SESSION" : "BREAK TIME";
-    timerCaption.textContent = formatTargetLabel(targetMins);
-}
-
-function updateModeButtons() {
-    studyModeBtn.classList.toggle("active", currentMode === "study");
-    breakModeBtn.classList.toggle("active", currentMode === "break");
-}
-
-function countStudyTime() {
-    todaySeconds++;
-    allTimeSeconds++;
-    saveStudyData();
-    updateStudyStats();
-}
-
-// START TIMER (COUNTS UP FROM 0)
-function startTimer() {
-    if (isRunning) return;
-
-    const targetMins = currentMode === "study" ? studyDuration : breakDuration;
-    const totalTargetSeconds = targetMins * 60;
-
-    if (elapsedSeconds >= totalTargetSeconds) {
-        elapsedSeconds = 0;
-    }
-
-    isRunning = true;
-    startTimerBtn.disabled = true;
-
-    if (pomodoroBadge) {
-        pomodoroBadge.innerHTML = currentMode === "study"
-            ? "<span></span> Focusing..."
-            : "<span></span> On Break...";
-    }
-
-    if (currentMode === "study") {
-        const task = studyTaskInput.value.trim();
-        pomodoroTaskStatus.textContent = task
-            ? "Working on: " + task
-            : "Study session in progress!";
-        timerStatus.textContent = "Focus on your study session.";
-    } else {
-        timerStatus.textContent = "Take a short break and relax.";
-    }
-
-    timerInterval = setInterval(function () {
-        if (currentMode === "study") {
-            countStudyTime();
-        }
-
-        elapsedSeconds++;
-        updateTimerDisplay();
-
-        if (elapsedSeconds >= totalTargetSeconds) {
-            completeSession();
-        }
-    }, 1000);
-}
-
-// PAUSE TIMER
-function pauseTimer() {
-    if (!isRunning) return;
-
-    clearInterval(timerInterval);
-    timerInterval = null;
-    isRunning = false;
-    startTimerBtn.disabled = false;
-
-    if (pomodoroBadge) {
-        pomodoroBadge.innerHTML = "<span></span> Paused";
-    }
-    timerStatus.textContent = "Timer paused.";
-}
-
-// RESET TIMER TO 00:00
-function resetTimer() {
-    clearInterval(timerInterval);
-    timerInterval = null;
-    isRunning = false;
-    startTimerBtn.disabled = false;
-
-    elapsedSeconds = 0;
-
-    if (pomodoroBadge) {
-        pomodoroBadge.innerHTML = "<span></span> Ready to focus";
-    }
-    timerStatus.textContent = "Timer reset to 00:00. Ready to start?";
-    updateTimerDisplay();
-}
-
-// SWITCH STUDY / BREAK MODE
-function setTimerMode(mode) {
-    if (isRunning) {
-        const confirmSwitch = confirm("Current timer will stop. Do you want to continue?");
-        if (!confirmSwitch) return;
-    }
-
-    clearInterval(timerInterval);
-    timerInterval = null;
-    isRunning = false;
-    startTimerBtn.disabled = false;
-
-    currentMode = mode;
-    elapsedSeconds = 0;
-
-    if (currentMode === "study") {
-        timerStatus.textContent = "Ready for your study session?";
-    } else {
-        timerStatus.textContent = "Enjoy your break!";
-    }
-
-    updateModeButtons();
-    updateTimerDisplay();
-}
-
-// COMPLETE SESSION
-function completeSession() {
-    clearInterval(timerInterval);
-    timerInterval = null;
-    isRunning = false;
-    startTimerBtn.disabled = false;
-
-    if (currentMode === "study") {
-        completedSessions++;
-        saveStudyData();
-        updateStudyStats();
-
-        timerStatus.textContent = "🎉 Study session completed!";
-        pomodoroTaskStatus.textContent = "Completed: " + (studyTaskInput.value.trim() || "Study session");
-
-        alert("🎉 Great work! Your study target is completed. Time for a break.");
-        setTimerMode("break");
-    } else {
-        timerStatus.textContent = "☕ Break completed!";
-        alert("Break finished! Time to get back to studying.");
-        setTimerMode("study");
-    }
-}
-
-// APPLY CUSTOM SETTINGS (HOURS + MINUTES & BREAK)
-function applyTimerSettings() {
-    if (isRunning) {
-        alert("Please pause the timer before changing settings.");
-        return;
-    }
-
-    const hrs = Number(studyHoursInput.value) || 0;
-    const mins = Number(studyMinutesInput.value) || 0;
-    const totalStudyMins = (hrs * 60) + mins;
-    const breakValue = Number(breakDurationInput.value);
-
-    if (hrs < 0 || hrs > 10 || mins < 0 || mins > 59 || totalStudyMins < 1) {
-        alert("Please enter a valid study duration (minimum 1 minute, max 10 hours).");
-        return;
-    }
-
-    if (!Number.isInteger(breakValue) || breakValue < 1 || breakValue > 180) {
-        alert("Break duration must be between 1 and 180 minutes.");
-        return;
-    }
-
-    studyDuration = totalStudyMins;
-    breakDuration = breakValue;
-
-    localStorage.setItem("studyflowStudyDuration", studyDuration);
-    localStorage.setItem("studyflowBreakDuration", breakDuration);
-
-    elapsedSeconds = 0;
-    syncSettingsUI();
-    updateTimerDisplay();
-
-    timerStatus.textContent = "Settings applied! Timer ready at 00:00.";
-}
-
-// RESET TO DEFAULT (25m Study / 5m Break)
-function resetToDefaultSettings() {
-    if (isRunning) {
-        alert("Please pause the timer before resetting to default.");
-        return;
-    }
-
-    studyDuration = 25;
-    breakDuration = 5;
-
-    localStorage.setItem("studyflowStudyDuration", studyDuration);
-    localStorage.setItem("studyflowBreakDuration", breakDuration);
-
-    elapsedSeconds = 0;
-    syncSettingsUI();
-    updateTimerDisplay();
-
-    timerStatus.textContent = "Default settings restored (25m Study / 5m Break).";
-}
-
-// PRESET BUTTON CLICKS
-studyPresetBtns.forEach(btn => {
+// Quick Select Chips + Active Visual Feedback
+document.querySelectorAll(".quick-hour-chip").forEach(btn => {
     btn.addEventListener("click", () => {
-        const totalMins = Number(btn.dataset.mins);
-        studyHoursInput.value = Math.floor(totalMins / 60);
-        studyMinutesInput.value = totalMins % 60;
-        studyPresetBtns.forEach(b => b.classList.remove("active-pill"));
-        btn.classList.add("active-pill");
+        document.querySelectorAll(".quick-hour-chip").forEach(c => {
+            c.style.background = "rgba(99,102,241,0.12)";
+            c.style.color = "#a5b4fc";
+        });
+        btn.style.background = "#6366f1";
+        btn.style.color = "#ffffff";
+
+        const hoursInput = document.getElementById("studyLogHoursInput");
+        if (hoursInput) {
+            hoursInput.value = btn.dataset.hrs;
+            hoursInput.focus();
+        }
     });
 });
 
-breakPresetBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-        breakDurationInput.value = Number(btn.dataset.mins);
-        breakPresetBtns.forEach(b => b.classList.remove("active-pill"));
-        btn.classList.add("active-pill");
+// Daily Goal Dropdown Change
+const dailyGoalSelect = document.getElementById("dailyStudyGoalSelect");
+if (dailyGoalSelect) {
+    dailyGoalSelect.addEventListener("change", () => {
+        localStorage.setItem("studyflowDailyGoalHours", dailyGoalSelect.value);
+        renderStudyAnalyticsAndLogs();
+        saveStudyLogs(getStudyLogs());
     });
-});
+}
 
-// BUTTON EVENTS
-startTimerBtn.addEventListener("click", startTimer);
-pauseTimerBtn.addEventListener("click", pauseTimer);
-resetTimerBtn.addEventListener("click", resetTimer);
-studyModeBtn.addEventListener("click", () => setTimerMode("study"));
-breakModeBtn.addEventListener("click", () => setTimerMode("break"));
-saveTimerSettingsBtn.addEventListener("click", applyTimerSettings);
-resetDefaultSettingsBtn.addEventListener("click", resetToDefaultSettings);
+// Mark & Save Button + Enter Key Support
+const markStudyLogBtn = document.getElementById("markStudyLogBtn");
+if (markStudyLogBtn) {
+    markStudyLogBtn.addEventListener("click", addManualStudyEntry);
+}
+
+["studyLogTopicInput", "studyLogHoursInput"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                addManualStudyEntry();
+            }
+        });
+    }
+});
 
 // INITIAL LOAD
-syncSettingsUI();
-updateModeButtons();
-updateTimerDisplay();
-updateStudyStats();
+renderStudyAnalyticsAndLogs();
+
+// =====================================================
+// SETTINGS
 // =====================================================
 // SETTINGS
 // =====================================================
@@ -1583,10 +1455,42 @@ const resetAppBtn = document.getElementById("resetAppBtn");
 // =====================================================
 
 function loadStudentName() {
-    const savedName = localStorage.getItem("studyflowStudentName");
-    if (savedName && studentNameInput) {
+    const userObj = JSON.parse(localStorage.getItem("studyflowUser") || "{}");
+    const savedName = localStorage.getItem("studyflowStudentName") || userObj.name || "";
+
+    if (studentNameInput) {
         studentNameInput.value = savedName;
     }
+
+    const emailInput = document.getElementById("studentEmailInput");
+    if (emailInput) {
+        emailInput.value = userObj.email || "Not available";
+    }
+
+    const genderInput = document.getElementById("studentGenderInput");
+    if (genderInput) {
+        const savedGender = localStorage.getItem("studyflowStudentGender") || userObj.gender || "";
+        const formattedGender = savedGender
+            ? savedGender.charAt(0).toUpperCase() + savedGender.slice(1).toLowerCase()
+            : "";
+        genderInput.value = formattedGender;
+    }
+}
+
+const saveGenderBtn = document.getElementById("saveGenderBtn");
+if (saveGenderBtn) {
+    saveGenderBtn.addEventListener("click", () => {
+        const genderInput = document.getElementById("studentGenderInput");
+        if (!genderInput) return;
+        const selectedGender = genderInput.value;
+        localStorage.setItem("studyflowStudentGender", selectedGender);
+
+        const userObj = JSON.parse(localStorage.getItem("studyflowUser") || "{}");
+        userObj.gender = selectedGender;
+        localStorage.setItem("studyflowUser", JSON.stringify(userObj));
+
+        alert("✅ Gender updated successfully!");
+    });
 }
 
 
@@ -2191,6 +2095,27 @@ if (loginForm) {
             localStorage.setItem("studyflowToken", data.token);
             localStorage.setItem("studyflowLoggedIn", "true");
             localStorage.setItem("studyflowUser", JSON.stringify(data.user));
+            localStorage.setItem("studyflowToken", data.token);
+localStorage.setItem("studyflowLoggedIn", "true");
+localStorage.setItem("studyflowUser", JSON.stringify(data.user));
+localStorage.setItem("studyflowStudentName", data.user.name);
+
+if (data.user.course) {
+    localStorage.setItem("studyflowStudentCourse", data.user.course);
+} else {
+    localStorage.removeItem("studyflowStudentCourse");
+}
+
+if (rememberMeCheckbox && rememberMeCheckbox.checked) {
+    localStorage.setItem("studyflowRememberedEmail", email);
+} else {
+    localStorage.removeItem("studyflowRememberedEmail");
+}
+
+if (typeof loadProfile === "function") loadProfile();
+if (typeof loadStudentName === "function") loadStudentName();
+if (typeof loadStudentCourse === "function") loadStudentCourse();
+if (typeof loadStudentGreeting === "function") loadStudentGreeting();
             localStorage.setItem("studyflowStudentName", data.user.name);
             if (data.user.course) localStorage.setItem("studyflowCourse", data.user.course);
 
@@ -2253,6 +2178,7 @@ if (localStorage.getItem("studyflowLoggedIn") === "true" && getAuthToken()) {
 }
 
 // LOGOUT
+// LOGOUT
 const logoutBtn = document.getElementById("logoutBtn");
 if (logoutBtn) {
     logoutBtn.addEventListener("click", async function () {
@@ -2260,6 +2186,10 @@ if (logoutBtn) {
         isCloudDataLoaded = false;
         localStorage.removeItem("studyflowLoggedIn");
         localStorage.removeItem("studyflowToken");
+        localStorage.removeItem("studyflowUser");
+        localStorage.removeItem("studyflowStudentName");
+        localStorage.removeItem("studyflowStudentCourse");
+        localStorage.removeItem("studyflowStudentGender");
         localStorage.removeItem("studyflowSubjects");
         localStorage.removeItem("studyflowTasks");
         localStorage.removeItem("studyflowSchedules");

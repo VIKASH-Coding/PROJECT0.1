@@ -855,165 +855,129 @@
 
 
         <!-- =====================================
-             POMODORO TIMER
-        ====================================== -->
-        <section class="bottom-grid">
-
-            <!-- =====================================
-             POMODORO TIMER
+             STUDY HOURS TRACKER & ANALYTICS (PRO)
         ====================================== -->
         <section class="bottom-grid">
 
             <div class="panel pomodoro-panel" id="pomodoro">
 
-                <div class="panel-heading">
-                    <h2>⏱ Pomodoro Timer</h2>
+                <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <h2>⏱ Study Hours Tracker</h2>
+                    <span style="font-size: 0.78rem; padding: 5px 12px; border-radius: 20px; background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; font-weight: 600;">
+                        ☁️ Cloud Synced
+                    </span>
                 </div>
 
-                <div class="pomodoro">
+                <div class="study-log-pro-wrapper" style="display: flex; flex-direction: column; gap: 18px;">
 
-                    <!-- TASK INPUT -->
-                    <div class="pomodoro-topline">
-                        <div class="pomodoro-context">
-                            <span class="pomodoro-eyebrow">FOCUS WORKSPACE</span>
-                            <label for="studyTaskInput">What are you working on?</label>
-                            <input
-                                type="text"
-                                id="studyTaskInput"
-                                placeholder="e.g. Java, DBMS, DSA..."
-                            >
-                        </div>
-
-                        <div class="pomodoro-live-badge" id="pomodoroBadge">
-                            <span></span> Ready to focus
-                        </div>
-                    </div>
-
-                    <!-- TIMER MODE -->
-                    <div class="timer-mode">
-                        <button type="button" id="studyModeBtn" class="active">
-                            📚 Study
-                        </button>
-                        <button type="button" id="breakModeBtn">
-                            ☕ Break
-                        </button>
-                    </div>
-
-                    <!-- TIMER DISPLAY -->
-                    <div class="timer-stage">
-                        <div class="timer-ring" id="timerRing">
-                            <div class="timer-ring-inner">
-                                <span id="timerModeLabel" class="timer-mode-label">
-                                    FOCUS SESSION
-                                </span>
-                                <div id="timerDisplay" class="timer-display">
-                                    00:00
-                                </div>
-                                <span id="timerCaption" class="timer-caption">
-                                    Target: 25m
+                    <!-- 1. Daily Goal Progress Card -->
+                    <div style="padding: 18px 20px; border-radius: 16px; background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.06)); border: 1px solid rgba(99, 102, 241, 0.25);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1rem; font-weight: 700; color: #f8fafc;">🎯 Today's Study Goal</span>
+                                <span id="goalStatusPill" style="font-size: 0.74rem; padding: 3px 10px; border-radius: 20px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">
+                                    0% Completed
                                 </span>
                             </div>
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: #cbd5e1;">
+                                <span>Target:</span>
+                                <select id="dailyStudyGoalSelect" style="padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: #0f172a; color: #f8fafc; font-weight: 600; cursor: pointer;">
+                                    <option value="2">2 Hours</option>
+                                    <option value="3">3 Hours</option>
+                                    <option value="4" selected>4 Hours</option>
+                                    <option value="5">5 Hours</option>
+                                    <option value="6">6 Hours</option>
+                                    <option value="8">8 Hours</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div style="width: 100%; height: 10px; border-radius: 99px; background: rgba(15, 23, 42, 0.75); overflow: hidden; border: 1px solid rgba(255,255,255,0.06);">
+                            <div id="dailyGoalProgressBar" style="width: 0%; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #6366f1, #38bdf8, #10b981); transition: width 0.45s ease;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 7px; font-size: 0.78rem; color: #94a3b8;">
+                            <span id="dailyGoalProgressText">0.0 hrs completed today</span>
+                            <span id="dailyGoalRemainingText">4.0 hrs remaining</span>
                         </div>
                     </div>
 
-                    <!-- TIMER STATUS -->
-                    <p id="timerStatus">
-                        Focus on your study session.
-                    </p>
+                    <!-- 2. Task-Style Study Session Logger -->
+                    <div style="padding: 20px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+                        <div style="margin-bottom: 14px;">
+                            <h3 style="margin: 0; font-size: 1.05rem; color: #f8fafc;">📘 Log Completed Study Session</h3>
+                            <p style="margin: 3px 0 0 0; font-size: 0.83rem; color: #94a3b8;">Studied via YouTube, books, or offline? Mark your session like a completed task.</p>
+                        </div>
 
-                    <!-- TIMER BUTTONS -->
-                    <div class="timer-buttons">
-                        <button type="button" id="startTimerBtn">▶ Start</button>
-                        <button type="button" id="pauseTimerBtn">⏸ Pause</button>
-                        <button type="button" id="resetTimerBtn">🔄 Reset</button>
-                    </div>
+                        <!-- Topic + Source Tag + Hours + Mark Button -->
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                            <input type="text" id="studyLogTopicInput" placeholder="Topic (e.g., DSA Arrays, DBMS Lecture)" 
+                                style="flex: 2.2; min-width: 200px; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(15, 23, 42, 0.65); color: #f8fafc; font-size: 0.9rem;">
 
-                    <!-- TIMER SETTINGS -->
-                    <div class="pomodoro-settings">
-                        <div class="pomodoro-settings-heading">
-                            <div>
-                                <strong>Session Settings</strong>
-                                <small>Set study (hours & minutes) and break duration</small>
-                            </div>
-                            <button type="button" id="resetDefaultSettingsBtn" class="default-reset-btn">
-                                ↺ Default (25m / 5m)
+                            <select id="studyLogSourceSelect" 
+                                style="flex: 1.1; min-width: 150px; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #0f172a; color: #e2e8f0; font-size: 0.88rem; cursor: pointer;">
+                                <option value="📺 YouTube">📺 YouTube</option>
+                                <option value="📖 Book / Notes">📖 Book / Notes</option>
+                                <option value="💻 Coding / Lab">💻 Coding / Lab</option>
+                                <option value="📝 Revision">📝 Revision</option>
+                            </select>
+                            
+                            <input type="number" id="studyLogHoursInput" min="0.25" max="16" step="0.25" placeholder="Hours (e.g. 1.5)" 
+                                style="flex: 1; min-width: 130px; padding: 11px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(15, 23, 42, 0.65); color: #f8fafc; font-size: 0.9rem;">
+                            
+                            <button type="button" id="markStudyLogBtn" 
+                                style="padding: 11px 22px; border-radius: 10px; border: none; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);">
+                                ✓ Mark & Save
                             </button>
                         </div>
 
-                        <div class="pomodoro-setting-grid">
-                            <!-- STUDY DURATION (HOURS + MINUTES) -->
-                            <div class="setting-box">
-                                <label>📚 Study Duration</label>
-                                <div class="hm-inputs">
-                                    <div class="duration-input-wrap">
-                                        <input type="number" id="studyHoursInput" min="0" max="10" value="0">
-                                        <span>hrs</span>
-                                    </div>
-                                    <div class="duration-input-wrap">
-                                        <input type="number" id="studyMinutesInput" min="0" max="59" value="25">
-                                        <span>min</span>
-                                    </div>
-                                </div>
-                                <div class="preset-pills" id="studyPresets">
-                                    <button type="button" data-mins="25">25m</button>
-                                    <button type="button" data-mins="45">45m</button>
-                                    <button type="button" data-mins="60">1h</button>
-                                    <button type="button" data-mins="120">2h</button>
-                                </div>
-                            </div>
-
-                            <!-- BREAK DURATION (5, 10, 15, 20, 30 MINS + CUSTOM) -->
-                            <div class="setting-box">
-                                <label>☕ Break Duration</label>
-                                <div class="duration-input-wrap">
-                                    <input type="number" id="breakDurationInput" min="1" max="180" value="5">
-                                    <span>minutes</span>
-                                </div>
-                                <div class="preset-pills" id="breakPresets">
-                                    <button type="button" data-mins="5" class="active-pill">5m</button>
-                                    <button type="button" data-mins="10">10m</button>
-                                    <button type="button" data-mins="15">15m</button>
-                                    <button type="button" data-mins="20">20m</button>
-                                    <button type="button" data-mins="30">30m</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button type="button" id="saveTimerSettingsBtn" class="apply-full-btn">
-                            Apply Settings
-                        </button>
-                    </div>
-
-                    <!-- DAILY STUDY TRACKER -->
-                    <div class="session-info">
-                        <div class="session-stat">
-                            <span>⏱</span>
-                            <strong id="todayStudyTime">0h 00m</strong>
-                            <span>Studied Today</span>
-                        </div>
-
-                        <div class="session-stat">
-                            <span>🎯</span>
-                            <strong id="sessionCount">0</strong>
-                            <span>Completed Sessions</span>
-                        </div>
-
-                        <div class="session-stat">
-                            <span>📅</span>
-                            <strong id="totalStudyTime">0h 00m</strong>
-                            <span>Total Study Time</span>
+                        <!-- Quick Preset Hour Chips -->
+                        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-size: 0.82rem; color: #94a3b8;">Quick Select:</span>
+                            <button type="button" class="quick-hour-chip" data-hrs="0.5" style="padding: 6px 13px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.12); color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s;">+30m</button>
+                            <button type="button" class="quick-hour-chip" data-hrs="1" style="padding: 6px 13px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.12); color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s;">+1 Hr</button>
+                            <button type="button" class="quick-hour-chip" data-hrs="2" style="padding: 6px 13px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.12); color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s;">+2 Hrs</button>
+                            <button type="button" class="quick-hour-chip" data-hrs="3" style="padding: 6px 13px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.12); color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s;">+3 Hrs</button>
+                            <button type="button" class="quick-hour-chip" data-hrs="4" style="padding: 6px 13px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.35); background: rgba(99,102,241,0.12); color: #a5b4fc; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: 0.2s;">+4 Hrs</button>
                         </div>
                     </div>
 
-                    <!-- TASK STATUS -->
-                    <div id="pomodoroTaskStatus" class="pomodoro-history-note">
-                        Your study time is saved automatically.
+                    <!-- 3. 4-Card Study Analytics (Today, Monthly, Yearly, All-Time) -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px;">
+                        <div style="padding: 18px; border-radius: 14px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); text-align: center;">
+                            <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px;">⏱️ Studied Today</div>
+                            <div id="todayStudyTime" style="font-size: 1.55rem; font-weight: 800; color: #38bdf8;">0h 00m</div>
+                        </div>
+
+                        <div style="padding: 18px; border-radius: 14px; background: rgba(167, 139, 250, 0.05); border: 1px solid rgba(167, 139, 250, 0.2); text-align: center;">
+                            <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px;">📅 This Month</div>
+                            <div id="monthlyStudyTime" style="font-size: 1.55rem; font-weight: 800; color: #a78bfa;">0h 00m</div>
+                        </div>
+
+                        <div style="padding: 18px; border-radius: 14px; background: rgba(52, 211, 153, 0.05); border: 1px solid rgba(52, 211, 153, 0.2); text-align: center;">
+                            <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px;">🗓️ This Year (2026)</div>
+                            <div id="yearlyStudyTime" style="font-size: 1.55rem; font-weight: 800; color: #34d399;">0h 00m</div>
+                        </div>
+
+                        <div style="padding: 18px; border-radius: 14px; background: rgba(251, 191, 36, 0.05); border: 1px solid rgba(251, 191, 36, 0.2); text-align: center;">
+                            <div style="font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px;">🏆 All-Time Total</div>
+                            <div id="totalStudyTime" style="font-size: 1.55rem; font-weight: 800; color: #fbbf24;">0h 00m</div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Recent Study Log History -->
+                    <div style="padding: 20px; border-radius: 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4 style="margin: 0; font-size: 0.98rem; color: #f8fafc;">📋 Study Activity History</h4>
+                            <span id="studyLogCountBadge" style="font-size: 0.78rem; padding: 3px 10px; border-radius: 12px; background: rgba(255,255,255,0.06); color: #cbd5e1;">0 entries</span>
+                        </div>
+                        <div id="studyLogHistoryList" style="display: flex; flex-direction: column; gap: 9px; max-height: 290px; overflow-y: auto;">
+                            <p style="margin: 0; font-size: 0.85rem; color: #64748b; text-align: center; padding: 16px;">No study sessions logged yet. Add your first session above!</p>
+                        </div>
                     </div>
 
                 </div>
             </div>
-
-    
 
         </section>
 
@@ -1071,8 +1035,40 @@
                             </div>
                         </div>
                         <div class="setting-control">
-                            <input type="text" id="studentCourseInput" placeholder="e.g. B.Tech CSE IoT">
+                            <input type="text" id="studentCourseInput" placeholder="e.g. B.Tech CSE, BCA, B.Sc">
                             <button type="button" id="saveCourseBtn" class="primary-setting-btn">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-icon blue">📧</div>
+                            <div class="setting-text">
+                                <strong>Registered Email</strong>
+                                <small>Linked with your StudyFlow account</small>
+                            </div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="email" id="studentEmailInput" readonly placeholder="Email">
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-info">
+                            <div class="setting-icon purple">⚧️</div>
+                            <div class="setting-text">
+                                <strong>Gender</strong>
+                                <small>Provided during registration (or update here)</small>
+                            </div>
+                        </div>
+                        <div class="setting-control">
+                            <select id="studentGenderInput" style="padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #1e293b; color: inherit; min-width: 170px;">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <button type="button" id="saveGenderBtn" class="primary-setting-btn">Save</button>
                         </div>
                     </div>
                 </div>
