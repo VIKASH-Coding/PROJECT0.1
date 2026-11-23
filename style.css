@@ -4146,3 +4146,74 @@ body.dark .forgot-link {
     transform: translateY(-1px);
     box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
 }
+
+
+
+
+/* ai modifications */
+
+
+/* =====================================================
+   THEME-ADAPTIVE FIX FOR STUDY TRACKER & AI QUIZ
+   (Works automatically in both Light Mode & Dark Mode)
+===================================================== */
+
+/* 1. Light Mode (Default) Overrides */
+body:not(.dark-mode):not(.dark) #pomodoro h3,
+body:not(.dark-mode):not(.dark) #pomodoro h4,
+body:not(.dark-mode):not(.dark) #pomodoro strong,
+body:not(.dark-mode):not(.dark) #pomodoro span[style*="color: #f8fafc"],
+body:not(.dark-mode):not(.dark) #aiQuiz h2,
+body:not(.dark-mode):not(.dark) #aiQuiz strong,
+body:not(.dark-mode):not(.dark) #aiQuiz label,
+body:not(.dark-mode):not(.dark) #aiQuiz h4,
+body:not(.dark-mode):not(.dark) #quizFinalScoreDisplay {
+    color: #0f172a !important;
+}
+
+/* Inputs, Selects & Textarea in Light Mode */
+body:not(.dark-mode):not(.dark) #studyLogTopicInput,
+body:not(.dark-mode):not(.dark) #studyLogSourceSelect,
+body:not(.dark-mode):not(.dark) #studyLogHoursInput,
+body:not(.dark-mode):not(.dark) #dailyStudyGoalSelect,
+body:not(.dark-mode):not(.dark) #quizNotesTextarea,
+body:not(.dark-mode):not(.dark) #quizQuestionCount,
+body:not(.dark-mode):not(.dark) #quizDifficultySelect,
+body:not(.dark-mode):not(.dark) #quizTopicTitleInput {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+/* Cards & Boxes inside Study Tracker & AI Quiz in Light Mode */
+body:not(.dark-mode):not(.dark) #pomodoro .study-log-pro-wrapper > div,
+body:not(.dark-mode):not(.dark) #aiQuiz #quizSetupBox > div:last-child,
+body:not(.dark-mode):not(.dark) #aiQuiz .panel > div:last-child {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+/* History Rows & Quiz Option Cards in Light Mode */
+body:not(.dark-mode):not(.dark) #studyLogHistoryList > div,
+body:not(.dark-mode):not(.dark) #pastQuizHistoryList > div,
+body:not(.dark-mode):not(.dark) #quizQuestionsContainer > div,
+body:not(.dark-mode):not(.dark) #quizQuestionsContainer label,
+body:not(.dark-mode):not(.dark) #cancelQuizBtn {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border: 1px solid #e2e8f0 !important;
+}
+
+body:not(.dark-mode):not(.dark) #studyLogHistoryList div[style*="color: #f1f5f9"],
+body:not(.dark-mode):not(.dark) #pastQuizHistoryList div[style*="color: #f1f5f9"] {
+    color: #0f172a !important;
+}
+
+/* Progress Bar Track in Light Mode */
+body:not(.dark-mode):not(.dark) #dailyGoalProgressBar {
+    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+}
+body:not(.dark-mode):not(.dark) #pomodoro div[style*="height: 10px"] {
+    background: #e2e8f0 !important;
+}
