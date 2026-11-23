@@ -4217,3 +4217,14 @@ body:not(.dark-mode):not(.dark) #dailyGoalProgressBar {
 body:not(.dark-mode):not(.dark) #pomodoro div[style*="height: 10px"] {
     background: #e2e8f0 !important;
 }
+
+
+/* Make MCQ Question Text & Result Review Text Dark in Light Mode */
+body:not(.dark-mode):not(.dark) #quizQuestionsContainer > div > div:first-child,
+body:not(.dark-mode):not(.dark) #quizReviewContainer > div > div:first-child {
+    color: #0f172a !important;
+}
+
+body:not(.dark-mode):not(.dark) #quizReviewContainer > div > div:nth-child(2) {
+    color: #334155 !important;
+}
