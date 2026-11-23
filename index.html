@@ -1014,7 +1014,22 @@ E<body>
 
                 <!-- STEP 1: INPUT & UPLOAD AREA -->
                 <div id="quizSetupBox" style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
-
+                       
+                    <!-- REAL GEMINI AI API KEY BAR -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25);">
+                        <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 240px;">
+                            <span style="font-size: 1.1rem;">🔑</span>
+                            <input type="password" id="geminiApiKeyInput" placeholder="Paste Google Gemini API Key (from aistudio.google.com)"
+                                style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: #0f172a; color: #f8fafc; font-size: 0.84rem;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" id="saveGeminiKeyBtn"
+                                style="padding: 8px 14px; border-radius: 8px; border: none; background: #10b981; color: #fff; font-weight: 600; font-size: 0.82rem; cursor: pointer;">
+                                Save Key
+                            </button>
+                            <span id="geminiKeyStatus" style="font-size: 0.78rem; color: #94a3b8;">Not connected</span>
+                        </div>
+                    </div>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
                         <label for="quizPdfUpload" style="padding: 18px; border-radius: 14px; border: 1.5px dashed rgba(99, 102, 241, 0.45); background: rgba(99, 102, 241, 0.06); cursor: pointer; text-align: center;">
                             <div style="font-size: 1.8rem; margin-bottom: 6px;">📄</div>

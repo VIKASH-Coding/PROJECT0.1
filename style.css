@@ -4228,3 +4228,16 @@ body:not(.dark-mode):not(.dark) #quizReviewContainer > div > div:first-child {
 body:not(.dark-mode):not(.dark) #quizReviewContainer > div > div:nth-child(2) {
     color: #334155 !important;
 }
+
+
+
+body:not(.dark-mode):not(.dark) #geminiApiKeyInput {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+body:not(.dark-mode):not(.dark) #quizQuestionsContainer > div > div:first-child,
+body:not(.dark-mode):not(.dark) #quizReviewContainer > div > div:first-child {
+    color: #0f172a !important;
+}

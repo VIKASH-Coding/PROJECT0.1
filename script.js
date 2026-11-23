@@ -2205,9 +2205,44 @@ if (logoutBtn) {
 
 
 // =====================================================
-// AI SMART QUIZ GENERATOR (PDF + IMAGE OCR + MCQ ENGINE)
+// REAL GOOGLE GEMINI AI QUIZ GENERATOR (TEXT + PDF + IMAGE VISION)
 // =====================================================
 let currentGeneratedQuiz = [];
+let uploadedImageBase64 = null;
+let uploadedImageMime = null;
+
+// Save & Load Gemini API Key from localStorage
+const geminiApiKeyInput = document.getElementById("geminiApiKeyInput");
+const saveGeminiKeyBtn = document.getElementById("saveGeminiKeyBtn");
+const geminiKeyStatus = document.getElementById("geminiKeyStatus");
+
+function updateGeminiKeyUI() {
+    const savedKey = localStorage.getItem("studyflowGeminiApiKey") || "";
+    if (geminiApiKeyInput && savedKey) geminiApiKeyInput.value = savedKey;
+    if (geminiKeyStatus) {
+        if (savedKey) {
+            geminiKeyStatus.textContent = "✅ Real AI Connected";
+            geminiKeyStatus.style.color = "#10b981";
+        } else {
+            geminiKeyStatus.textContent = "⚠️ Paste key for Real AI";
+            geminiKeyStatus.style.color = "#f59e0b";
+        }
+    }
+}
+
+if (saveGeminiKeyBtn) {
+    saveGeminiKeyBtn.addEventListener("click", () => {
+        const key = geminiApiKeyInput?.value.trim() || "";
+        if (!key) {
+            alert("Please paste your Google Gemini API key first!");
+            return;
+        }
+        localStorage.setItem("studyflowGeminiApiKey", key);
+        updateGeminiKeyUI();
+        alert("✅ Gemini AI API Key saved securely in your browser!");
+    });
+}
+updateGeminiKeyUI();
 
 function showExtractStatus(msg, isError = false) {
     const statusEl = document.getElementById("quizExtractStatus");
@@ -2225,6 +2260,7 @@ if (quizPdfUpload) {
     quizPdfUpload.addEventListener("change", async function (e) {
         const file = e.target.files[0];
         if (!file) return;
+        uploadedImageBase64 = null;
 
         const topicInput = document.getElementById("quizTopicTitleInput");
         if (topicInput && !topicInput.value.trim()) {
@@ -2240,7 +2276,7 @@ if (quizPdfUpload) {
 
         if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
             try {
-                showExtractStatus(`⏳ Extracting text from "${file.name}"...`);
+                showExtractStatus(`⏳ Reading PDF "${file.name}"...`);
                 const arrayBuffer = await file.arrayBuffer();
                 if (window.pdfjsLib) {
                     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -2254,20 +2290,18 @@ if (quizPdfUpload) {
                     }
                     document.getElementById("quizNotesTextarea").value = fullText.trim();
                     showExtractStatus(`✅ Extracted text from ${maxPages} page(s) of "${file.name}"!`);
-                } else {
-                    showExtractStatus("⚠️ PDF reader library loading, please try again in a second.", true);
                 }
             } catch (err) {
-                showExtractStatus("❌ Could not read PDF. Try pasting text or uploading a clear image.", true);
+                showExtractStatus("❌ Could not read PDF. Try pasting text or uploading an image.", true);
             }
         }
     });
 }
 
-// 2. Handwritten / Book Image OCR Handler
+// 2. Image Upload Handler (Sends Image Directly to Gemini Vision AI!)
 const quizImageUpload = document.getElementById("quizImageUpload");
 if (quizImageUpload) {
-    quizImageUpload.addEventListener("change", async function (e) {
+    quizImageUpload.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -2276,281 +2310,153 @@ if (quizImageUpload) {
             topicInput.value = file.name.replace(/\.[^/.]+$/, "");
         }
 
-        try {
-            showExtractStatus(`🔍 Scanning handwritten/book text from "${file.name}" (OCR)...`);
-            if (window.Tesseract) {
-                const result = await Tesseract.recognize(file, "eng");
-                const extracted = result.data.text.trim();
-                if (extracted.length < 15) {
-                    showExtractStatus("⚠️ Very little text detected. Try a clearer, well-lit photo.", true);
-                } else {
-                    const cleaned = cleanExtractedNotesText(extracted);
-                    document.getElementById("quizNotesTextarea").value = cleaned;
-                    showExtractStatus(`✅ OCR Scan Complete! Extracted ${cleaned.split(/\s+/).length} words from image.`);
-                }
-            } else {
-                showExtractStatus("⚠️ OCR engine is still loading, please wait 2 seconds.", true);
-            }
-        } catch (err) {
-            showExtractStatus("❌ Image scan failed. Please try another image.", true);
-        }
+        const reader = new FileReader();
+        reader.onload = function () {
+            const dataUrl = reader.result;
+            uploadedImageBase64 = dataUrl.split(",")[1];
+            uploadedImageMime = file.type || "image/jpeg";
+            document.getElementById("quizNotesTextarea").value = `[Image Attached: ${file.name}] — Gemini Vision AI will read this image directly to generate accurate MCQs!`;
+            showExtractStatus(`📸 Image "${file.name}" ready for Gemini Vision AI! Click "Generate MCQ Test".`);
+        };
+        reader.readAsDataURL(file);
     });
 }
 
-// 3. Demo Sample Notes Button (Great for Live Presentation)
+// 3. Demo Sample Button (Aptitude Example)
 const loadSampleNotesBtn = document.getElementById("loadSampleNotesBtn");
 if (loadSampleNotesBtn) {
     loadSampleNotesBtn.addEventListener("click", () => {
-        document.getElementById("quizTopicTitleInput").value = "DBMS & Operating Systems";
+        uploadedImageBase64 = null;
+        document.getElementById("quizTopicTitleInput").value = "Quantitative Aptitude - Percentage & Profit/Loss";
         document.getElementById("quizNotesTextarea").value =
-            "Normalization is the process of organizing data in a database to reduce redundancy and improve data integrity. " +
-            "A Primary Key uniquely identifies each record in a relational database table and cannot contain NULL values. " +
-            "Deadlock occurs in an operating system when two or more processes are blocked forever, each waiting for a resource held by another. " +
-            "Virtual Memory allows a computer to compensate for physical memory shortages by temporarily transferring pages from RAM to disk storage. " +
-            "Indexing is a data structure technique used to quickly locate and access data in a database without scanning every row. " +
-            "ACID properties stand for Atomicity, Consistency, Isolation, and Durability, ensuring reliable database transactions.";
-        showExtractStatus("✨ Sample CS notes loaded! Click 'Generate MCQ Test' to see it in action.");
+            "Generate Quantitative Aptitude practice questions covering Percentages, Profit and Loss, Ratio and Proportion, and Time & Work with numerical problem-solving options and step-by-step shortcut explanations.";
+        showExtractStatus("✨ Aptitude prompt loaded! Click 'Generate MCQ Test' to get real AI questions.");
     });
 }
- // 4. PROFESSIONAL EXAM-STYLE MCQ GENERATION ENGINE (NO FILL-IN-THE-BLANK)
-function cleanExtractedNotesText(rawText) {
-    return rawText
-        // Remove OCR garbage symbols & isolated single characters
-        .replace(/[^\w\s.,:;()-]/g, " ")
-        .replace(/\b[a-zA-Z0-9]\b/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-}
 
-function buildSmartMCQsFromText(rawText, count, difficulty) {
-    const cleanedText = cleanExtractedNotesText(rawText);
-
-    // Built-in Academic Concept Bank (Auto-triggers when handwritten OCR has sparse/noisy text)
-    const conceptBank = [
-        {
-            keywords: ["artificial", "intelligence", "ai", "machine", "learning", "neural"],
-            q: "Which of the following best defines Artificial Intelligence (AI)?",
-            correct: "Simulation of human intelligence processes such as learning, reasoning, and self-correction by computer systems",
-            wrong: [
-                "Manual hardware assembly and physical circuit maintenance in mainframe servers",
-                "A static database storage format used exclusively for offline spreadsheets",
-                "Low-level binary compilation of assembly code without decision-making logic"
-            ],
-            exp: "Artificial Intelligence enables machines to mimic human cognitive functions like learning and problem-solving."
-        },
-        {
-            keywords: ["artificial", "intelligence", "ai", "turing", "agent", "intelligent"],
-            q: "What is the primary role of an Intelligent Agent in Artificial Intelligence?",
-            correct: "Perceiving its environment through sensors and acting upon it using actuators to achieve goals",
-            wrong: [
-                "Compressing video files to reduce network bandwidth consumption",
-                "Formatting hard disk partitions during operating system installation",
-                "Encrypting local browser cookies using symmetric key algorithms"
-            ],
-            exp: "An intelligent agent perceives its environment and takes rational actions to maximize its chance of success."
-        },
-        {
-            keywords: ["artificial", "intelligence", "machine", "learning", "supervised", "data"],
-            q: "How does Supervised Learning differ from Unsupervised Learning in AI?",
-            correct: "Supervised learning trains models using labeled input-output pairs, whereas unsupervised learning finds patterns in unlabeled data",
-            wrong: [
-                "Supervised learning requires no training data, while unsupervised learning needs manual rules for every output",
-                "Supervised learning only works on text files, while unsupervised learning only processes audio",
-                "Both methods strictly require identical labeled datasets before execution"
-            ],
-            exp: "Labeled training datasets are the defining characteristic of supervised machine learning."
-        },
-        {
-            keywords: ["artificial", "intelligence", "neural", "deep", "network"],
-            q: "Which component of AI is inspired by the structure and function of the human brain?",
-            correct: "Artificial Neural Networks (ANN)",
-            wrong: [
-                "Relational Database Management Systems (RDBMS)",
-                "Round-Robin CPU Process Schedulers",
-                "Domain Name System (DNS) Resolvers"
-            ],
-            exp: "Artificial Neural Networks consist of interconnected layers of nodes modeled after biological neurons."
-        },
-        {
-            keywords: ["artificial", "intelligence", "nlp", "natural", "language", "vision"],
-            q: "Which branch of Artificial Intelligence focuses on enabling computers to understand and generate human language?",
-            correct: "Natural Language Processing (NLP)",
-            wrong: [
-                "Computer Graphics Rasterization",
-                "Virtual Memory Paging",
-                "Network Packet Switching"
-            ],
-            exp: "NLP bridges human communication and computer understanding through text and speech analysis."
-        },
-        {
-            keywords: ["normalization", "database", "dbms", "sql", "primary", "acid"],
-            q: "What is the primary objective of Database Normalization?",
-            correct: "Minimizing data redundancy and eliminating insertion, update, and deletion anomalies",
-            wrong: [
-                "Duplicating tables across multiple servers to increase storage usage",
-                "Removing all primary and foreign keys to speed up unindexed scans",
-                "Converting relational tables into unstructured plain-text logs"
-            ],
-            exp: "Normalization structures relational tables cleanly to preserve data integrity."
-        },
-        {
-            keywords: ["deadlock", "operating", "virtual", "memory", "process", "os"],
-            q: "Which condition occurs when two or more processes wait indefinitely for resources held by each other?",
-            correct: "Deadlock",
-            wrong: [
-                "Cache Hit Optimization",
-                "Context Spooling",
-                "Asynchronous Pipelining"
-            ],
-            exp: "Deadlock happens when circular wait and mutual exclusion prevent any competing process from proceeding."
-        }
-    ];
-
-    const mcqs = [];
-    const lowerText = cleanedText.toLowerCase();
-
-    // 1. Extract clean definition-based MCQs directly from well-formed sentences in notes
-    const sentences = cleanedText
-        .split(/[.!?]+/)
-        .map(s => s.trim())
-        .filter(s => {
-            const words = s.split(/\s+/);
-            const alphaWords = words.filter(w => /^[a-zA-Z]{3,}$/.test(w));
-            return words.length >= 6 && words.length <= 32 && (alphaWords.length / words.length) >= 0.75;
-        });
-
-    const allCleanDefinitions = sentences.map(s => {
-        const match = s.match(/^([A-Z][a-zA-Z0-9\s-]{2,30}?)\s+(?:is|are|refers to|means|allows|enables|occurs)\s+(.+)$/i);
-        if (match) {
-            return { term: match[1].trim(), desc: match[2].trim(), full: s };
-        }
-        return null;
-    }).filter(Boolean);
-
-    const genericDistractorStatements = [
-        "A hardware-level BIOS configuration used solely during system boot initialization",
-        "An outdated analog signal modulation protocol replaced by fiber-optic switching",
-        "A manual file compression technique that removes metadata without indexing",
-        "A temporary browser cache mechanism restricted to static stylesheet rendering"
-    ];
-
-    allCleanDefinitions.forEach((item, idx) => {
-        if (mcqs.length >= count) return;
-        const otherDescs = allCleanDefinitions
-            .filter((_, i) => i !== idx)
-            .map(d => d.desc.charAt(0).toUpperCase() + d.desc.slice(1));
-
-        const wrongPool = [...otherDescs, ...genericDistractorStatements]
-            .filter(w => w.toLowerCase() !== item.desc.toLowerCase())
-            .slice(0, 3);
-
-        const correctFormatted = item.desc.charAt(0).toUpperCase() + item.desc.slice(1);
-        const options = [correctFormatted, ...wrongPool].sort(() => Math.random() - 0.5);
-
-        const questionTemplates = [
-            `Which of the following accurately describes "${item.term}"?`,
-            `Based on your study notes, what is the key function of ${item.term}?`,
-            `Identify the correct statement regarding ${item.term}:`
-        ];
-
-        mcqs.push({
-            question: questionTemplates[idx % questionTemplates.length],
-            options: options,
-            answer: correctFormatted,
-            explanation: `${item.full}.`
-        });
-    });
-
-    // 2. Match detected keywords against Concept Bank (especially helpful for handwritten OCR photos!)
-    if (mcqs.length < count) {
-        const matchedBank = conceptBank.filter(entry =>
-            entry.keywords.some(kw => lowerText.includes(kw))
-        );
-
-        for (const item of matchedBank) {
-            if (mcqs.length >= count) break;
-            if (mcqs.some(q => q.question === item.q)) continue;
-
-            const options = [item.correct, ...item.wrong].sort(() => Math.random() - 0.5);
-            mcqs.push({
-                question: item.q,
-                options: options,
-                answer: item.correct,
-                explanation: item.exp
-            });
-        }
+// 4. CALL REAL GOOGLE GEMINI API FOR MCQs
+async function fetchRealGeminiMCQs(notesText, count, difficulty, topic) {
+    const apiKey = localStorage.getItem("studyflowGeminiApiKey") || "";
+    if (!apiKey) {
+        throw new Error("API_KEY_MISSING");
     }
 
-    // 3. Fallback: If general notes were pasted without "X is Y" format, create statement-verification MCQs
-    if (mcqs.length < count && sentences.length > 0) {
-        for (let i = 0; i < sentences.length && mcqs.length < count; i++) {
-            const stmt = sentences[i].charAt(0).toUpperCase() + sentences[i].slice(1);
-            if (mcqs.some(q => q.answer === stmt)) continue;
+    const promptText = `You are an expert professor and exam setter like ChatGPT/Gemini.
+Create ${count} high-quality, authentic, exam-level Multiple Choice Questions (MCQs) at "${difficulty}" difficulty based strictly on the provided study notes, topic, or attached image.
+Topic hint: ${topic || "General Study Topic"}
+Notes / Instructions: ${notesText}
 
-            const options = [
-                stmt,
-                ...genericDistractorStatements.slice(0, 3)
-            ].sort(() => Math.random() - 0.5);
+Rules:
+1. Every question must be directly relevant to the exact subject/topic provided (e.g., if Aptitude, give real numerical/logical aptitude problems; if Coding/Science/History, give real conceptual questions on that exact topic).
+2. Provide exactly 4 clear, distinct options per question.
+3. Include a crisp, helpful explanation for the correct answer.
+4. Return ONLY valid JSON (no markdown, no backticks) in this exact format:
+[
+  {
+    "question": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "answer": "Exact matching text of the correct option",
+    "explanation": "Step-by-step explanation of why this answer is correct"
+  }
+]`;
 
-            mcqs.push({
-                question: `Which of the following statements is directly supported by your study notes?`,
-                options: options,
-                answer: stmt,
-                explanation: `Verified from notes: "${stmt}."`
-            });
-        }
+    const parts = [{ text: promptText }];
+    if (uploadedImageBase64) {
+        parts.push({
+            inline_data: {
+                mime_type: uploadedImageMime,
+                data: uploadedImageBase64
+            }
+        });
     }
 
-    return mcqs;
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts }],
+                generationConfig: {
+                    temperature: 0.4,
+                    responseMimeType: "application/json"
+                }
+            })
+        }
+    );
+
+    if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || `API Error (${response.status})`);
+    }
+
+    const data = await response.json();
+    const rawReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    const cleanedJson = rawReply.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleanedJson);
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error("AI returned empty questions.");
+    }
+    return parsed;
 }
-
-
 
 // 5. Generate Quiz Button Click
 const generateAiQuizBtn = document.getElementById("generateAiQuizBtn");
 if (generateAiQuizBtn) {
-    generateAiQuizBtn.addEventListener("click", () => {
+    generateAiQuizBtn.addEventListener("click", async () => {
         const text = document.getElementById("quizNotesTextarea")?.value.trim() || "";
-        if (text.length < 40) {
-            alert("Please upload a PDF/Image or paste at least 3-4 sentences of study notes first!");
+        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "";
+
+        if (!text && !topic && !uploadedImageBase64) {
+            alert("Please upload a PDF/Image, paste notes, or enter a Topic Title (e.g., Aptitude) first!");
             return;
         }
 
         const count = Number(document.getElementById("quizQuestionCount")?.value || 5);
         const difficulty = document.getElementById("quizDifficultySelect")?.value || "Medium";
-        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "Study Notes Quiz";
 
-        const questions = buildSmartMCQsFromText(text, count, difficulty);
-        if (questions.length === 0) {
-            alert("Could not generate questions from this text. Please add more descriptive sentences.");
-            return;
+        const originalBtnText = generateAiQuizBtn.innerHTML;
+        generateAiQuizBtn.disabled = true;
+        generateAiQuizBtn.innerHTML = "⏳ Gemini AI Generating...";
+
+        try {
+            const questions = await fetchRealGeminiMCQs(text, count, difficulty, topic);
+            currentGeneratedQuiz = questions;
+
+            document.getElementById("activeQuizHeaderTitle").textContent = `📝 ${topic || "AI Smart Mock Test"}`;
+            document.getElementById("activeQuizMeta").textContent = `${questions.length} Questions • ${difficulty} Difficulty • Powered by Gemini AI`;
+
+            const container = document.getElementById("quizQuestionsContainer");
+            container.innerHTML = questions.map((q, qIdx) => `
+                <div style="padding: 18px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
+                    <div style="font-weight: 600; color: #f8fafc; margin-bottom: 12px; font-size: 0.96rem; line-height: 1.5;">
+                        <span style="color: #818cf8; margin-right: 6px;">Q${qIdx + 1}.</span> ${q.question}
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                        ${q.options.map((opt, oIdx) => `
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; color: #e2e8f0; font-size: 0.88rem;">
+                                <input type="radio" name="quiz_q_${qIdx}" value="${String(opt).replace(/"/g, "&quot;")}" style="accent-color: #6366f1;">
+                                <span><strong>${String.fromCharCode(65 + oIdx)}.</strong> ${opt}</span>
+                            </label>
+                        `).join("")}
+                    </div>
+                </div>
+            `).join("");
+
+            document.getElementById("quizSetupBox").style.display = "none";
+            document.getElementById("quizResultArea").style.display = "none";
+            document.getElementById("quizTestArea").style.display = "flex";
+        } catch (err) {
+            if (err.message === "API_KEY_MISSING") {
+                alert("🔑 Please paste your free Google Gemini API Key in the top box and click 'Save Key' first! (Get it free at aistudio.google.com)");
+            } else {
+                alert("❌ AI Generation Error: " + err.message);
+            }
+        } finally {
+            generateAiQuizBtn.disabled = false;
+            generateAiQuizBtn.innerHTML = originalBtnText;
         }
-
-        currentGeneratedQuiz = questions;
-
-        document.getElementById("activeQuizHeaderTitle").textContent = `📝 ${topic}`;
-        document.getElementById("activeQuizMeta").textContent = `${questions.length} Questions • ${difficulty} Difficulty`;
-
-        const container = document.getElementById("quizQuestionsContainer");
-        container.innerHTML = questions.map((q, qIdx) => `
-            <div style="padding: 18px; border-radius: 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.09);">
-                <div style="font-weight: 600; color: #f8fafc; margin-bottom: 12px; font-size: 0.95rem;">
-                    <span style="color: #818cf8; margin-right: 6px;">Q${qIdx + 1}.</span> ${q.question}
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px;">
-                    ${q.options.map((opt, oIdx) => `
-                        <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; color: #e2e8f0; font-size: 0.88rem;">
-                            <input type="radio" name="quiz_q_${qIdx}" value="${opt}" style="accent-color: #6366f1;">
-                            <span><strong>${String.fromCharCode(65 + oIdx)}.</strong> ${opt}</span>
-                        </label>
-                    `).join("")}
-                </div>
-            </div>
-        `).join("");
-
-        document.getElementById("quizSetupBox").style.display = "none";
-        document.getElementById("quizResultArea").style.display = "none";
-        document.getElementById("quizTestArea").style.display = "flex";
     });
 }
 
@@ -2564,26 +2470,26 @@ if (submitAiQuizBtn) {
         const reviewHtml = currentGeneratedQuiz.map((q, qIdx) => {
             const selectedInput = document.querySelector(`input[name="quiz_q_${qIdx}"]:checked`);
             const userAns = selectedInput ? selectedInput.value : "Not Answered";
-            const isCorrect = userAns.toLowerCase() === q.answer.toLowerCase();
+            const isCorrect = userAns.trim().toLowerCase() === String(q.answer).trim().toLowerCase();
             if (isCorrect) score++;
 
             return `
                 <div style="padding: 15px 18px; border-radius: 12px; background: ${isCorrect ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)"}; border: 1px solid ${isCorrect ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"};">
-                    <div style="font-weight: 600; color: #f8fafc; font-size: 0.92rem; margin-bottom: 6px;">
+                    <div style="font-weight: 600; color: #f8fafc; font-size: 0.94rem; margin-bottom: 6px;">
                         ${isCorrect ? "✅" : "❌"} Q${qIdx + 1}. ${q.question}
                     </div>
-                    <div style="font-size: 0.84rem; color: #cbd5e1; margin-bottom: 4px;">
+                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;">
                         Your Answer: <strong style="color: ${isCorrect ? "#34d399" : "#f87171"};">${userAns}</strong>
                         ${!isCorrect ? ` | Correct Answer: <strong style="color: #34d399;">${q.answer}</strong>` : ""}
                     </div>
-                    <div style="font-size: 0.8rem; color: #94a3b8;">💡 ${q.explanation}</div>
+                    <div style="font-size: 0.82rem; color: #94a3b8;">💡 ${q.explanation}</div>
                 </div>
             `;
         }).join("");
 
         const total = currentGeneratedQuiz.length;
         const accuracy = Math.round((score / total) * 100);
-        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "Study Notes Quiz";
+        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "AI Mock Test";
 
         document.getElementById("quizFinalScoreDisplay").textContent = `${score} / ${total}`;
         document.getElementById("quizAccuracyBadge").textContent = `Accuracy: ${accuracy}%`;
@@ -2648,7 +2554,6 @@ if (retakeNewQuizBtn) {
     });
 }
 
-// Sidebar link click par #aiQuiz ko smoothly dikhane ke liye
 document.querySelectorAll('a[href="#aiQuiz"]').forEach(link => {
     link.addEventListener("click", () => {
         const quizSec = document.getElementById("aiQuiz");
