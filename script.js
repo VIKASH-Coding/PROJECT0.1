@@ -2334,7 +2334,7 @@ if (loadSampleNotesBtn) {
     });
 }
 
-// 4. CALL REAL GOOGLE GEMINI API FOR MCQs
+// 4. CALL REAL GOOGLE GEMINI API FOR MCQs (WITH AUTO-FALLBACK & RETRY)
 async function fetchRealGeminiMCQs(notesText, count, difficulty, topic) {
     const apiKey = localStorage.getItem("studyflowGeminiApiKey") || "";
     if (!apiKey) {
@@ -2370,35 +2370,47 @@ Rules:
         });
     }
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts }],
-                generationConfig: {
-                    temperature: 0.4,
-                    responseMimeType: "application/json"
+    // Auto-fallback list: if one model has high demand, automatically try the next
+    const modelsToTry = ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+    let lastError = "AI server busy, please try again.";
+
+    for (const modelName of modelsToTry) {
+        try {
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts }],
+                        generationConfig: {
+                            temperature: 0.4,
+                            responseMimeType: "application/json"
+                        }
+                    })
                 }
-            })
+            );
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                lastError = errData?.error?.message || `API Error (${response.status})`;
+                continue; // Try next model automatically
+            }
+
+            const data = await response.json();
+            const rawReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+            const cleanedJson = rawReply.replace(/```json|```/g, "").trim();
+            const parsed = JSON.parse(cleanedJson);
+
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return parsed;
+            }
+        } catch (err) {
+            lastError = err.message;
         }
-    );
-
-    if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `API Error (${response.status})`);
     }
 
-    const data = await response.json();
-    const rawReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
-    const cleanedJson = rawReply.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleanedJson);
-
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-        throw new Error("AI returned empty questions.");
-    }
-    return parsed;
+    throw new Error(lastError);
 }
 
 // 5. Generate Quiz Button Click
