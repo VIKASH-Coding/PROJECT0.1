@@ -2371,13 +2371,24 @@ Rules:
     }
 
     // Auto-fallback list: if one model has high demand, automatically try the next
-    const modelsToTry = ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+     ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+    let lastError = "AI server busy, please try again.";
+// Active Gemini 3.8 models + Smart Auto-Retry for High Demand (503) spikes
+    const attempts = [
+        { model: "gemini-3.8-flash", delayMs: 0 },
+        { model: "gemini-3.8-flash", delayMs: 2000 },
+        { model: "gemini-3.8-flash-lite", delayMs: 1000 },
+        { model: "gemini-3.8-flash", delayMs: 3000 }
+    ];
     let lastError = "AI server busy, please try again.";
 
-    for (const modelName of modelsToTry) {
+    for (const attempt of attempts) {
+        if (attempt.delayMs > 0) {
+            await new Promise(resolve => setTimeout(resolve, attempt.delayMs));
+        }
         try {
             const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -2394,7 +2405,7 @@ Rules:
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
                 lastError = errData?.error?.message || `API Error (${response.status})`;
-                continue; // Try next model automatically
+                continue; // Retry automatically on high demand
             }
 
             const data = await response.json();
@@ -2411,8 +2422,6 @@ Rules:
     }
 
     throw new Error(lastError);
-}
-
 // 5. Generate Quiz Button Click
 const generateAiQuizBtn = document.getElementById("generateAiQuizBtn");
 if (generateAiQuizBtn) {
