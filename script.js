@@ -2582,3 +2582,4 @@ document.querySelectorAll('a[href="#aiQuiz"]').forEach(link => {
 });
 
 renderPastQuizScores();
+}
