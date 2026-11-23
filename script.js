@@ -2371,8 +2371,7 @@ Rules:
     }
 
     // Auto-fallback list: if one model has high demand, automatically try the next
-     ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
-    let lastError = "AI server busy, please try again.";
+    
 // Active Gemini 3.8 models + Smart Auto-Retry for High Demand (503) spikes
     const attempts = [
         { model: "gemini-3.8-flash", delayMs: 0 },
