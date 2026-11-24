@@ -2963,3 +2963,367 @@ Rules:
         }
     }, true);
 })();
+
+//7 day wala
+
+// =====================================================
+// LEETCODE-STYLE DYNAMIC STUDY STREAK, TOTAL HOURS & HISTORY SYNC
+// =====================================================
+(function () {
+    const STORAGE_LOGS_KEY = "studyflowStudySessions_v1";
+
+    function getLocalDateKey(dateObj = new Date()) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const d = String(dateObj.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    }
+
+    function getAllSessions() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_LOGS_KEY) || "[]");
+        } catch {
+            return [];
+        }
+    }
+
+    function saveSessions(list) {
+        localStorage.setItem(STORAGE_LOGS_KEY, JSON.stringify(list));
+    }
+
+    function formatHoursToHm(totalHours) {
+        const totalMins = Math.round((Number(totalHours) || 0) * 60);
+        const h = Math.floor(totalMins / 60);
+        const m = String(totalMins % 60).padStart(2, "0");
+        return `${h}h ${m}m`;
+    }
+
+    function calculateStreakStats(sessions) {
+        const hoursByDate = {};
+        let monthHours = 0;
+        let yearHours = 0;
+        let allTimeHours = 0;
+
+        const now = new Date();
+        const todayKey = getLocalDateKey(now);
+        const currentMonthPrefix = todayKey.slice(0, 7); // YYYY-MM
+        const currentYearPrefix = todayKey.slice(0, 4);  // YYYY
+
+        sessions.forEach(s => {
+            if (!s.date) return;
+            const hrs = Number(s.hours) || 0;
+            hoursByDate[s.date] = (hoursByDate[s.date] || 0) + hrs;
+            allTimeHours += hrs;
+            if (s.date.startsWith(currentMonthPrefix)) monthHours += hrs;
+            if (s.date.startsWith(currentYearPrefix)) yearHours += hrs;
+        });
+
+        const activeDates = Object.keys(hoursByDate)
+            .filter(d => hoursByDate[d] > 0)
+            .sort();
+
+        // Max streak calculation
+        let maxStreak = 0;
+        let tempStreak = 0;
+        let prevTime = null;
+        activeDates.forEach(dateStr => {
+            const currTime = new Date(dateStr + "T00:00:00").getTime();
+            if (prevTime !== null && Math.round((currTime - prevTime) / 86400000) === 1) {
+                tempStreak++;
+            } else {
+                tempStreak = 1;
+            }
+            if (tempStreak > maxStreak) maxStreak = tempStreak;
+            prevTime = currTime;
+        });
+
+        // Current active streak
+        let currentStreak = 0;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = getLocalDateKey(yesterday);
+
+        let checkDate = null;
+        if (hoursByDate[todayKey] > 0) {
+            checkDate = new Date();
+        } else if (hoursByDate[yesterdayKey] > 0) {
+            checkDate = yesterday;
+        }
+
+        while (checkDate) {
+            const key = getLocalDateKey(checkDate);
+            if (hoursByDate[key] > 0) {
+                currentStreak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                break;
+            }
+        }
+
+        return {
+            currentStreak,
+            maxStreak,
+            hoursByDate,
+            todayHours: hoursByDate[todayKey] || 0,
+            monthHours,
+            yearHours,
+            allTimeHours
+        };
+    }
+
+    function updateSummaryMetricCard(labelKeyword, formattedValue) {
+        const allLeaves = Array.from(document.querySelectorAll("div, span, p, h3, h4"))
+            .filter(el => el.children.length === 0 && el.textContent.toLowerCase().includes(labelKeyword.toLowerCase()));
+
+        allLeaves.forEach(labelEl => {
+            const cardBox = labelEl.parentElement;
+            if (!cardBox) return;
+            const timeValEl = Array.from(cardBox.querySelectorAll("div, span, p, h2, h3"))
+                .find(el => el !== labelEl && el.children.length === 0 && /\d+h\s*\d+m/i.test(el.textContent.trim()));
+            if (timeValEl) {
+                timeValEl.textContent = formattedValue;
+            }
+        });
+    }
+
+    function renderStreakAndGoalUI() {
+        const sessions = getAllSessions();
+        const {
+            currentStreak,
+            maxStreak,
+            hoursByDate,
+            todayHours,
+            monthHours,
+            yearHours,
+            allTimeHours
+        } = calculateStreakStats(sessions);
+
+        // 1. Update Study Streak Card + LeetCode 30-Day Heatmap
+        const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4, div, span"));
+        const streakHeading = headings.find(el => el.children.length === 0 && el.textContent.includes("Study Streak"));
+        const streakCard = streakHeading ? streakHeading.closest("div[class*='card'], div[style*='border-radius'], section, div") : null;
+
+        if (streakCard) {
+            const bigNumEl = Array.from(streakCard.querySelectorAll("div, span, h1, h2, p"))
+                .find(el => el.children.length === 0 && /^\d+$/.test(el.textContent.trim()));
+            if (bigNumEl) bigNumEl.textContent = String(currentStreak);
+
+            const daysLabelEl = Array.from(streakCard.querySelectorAll("div, span, p"))
+                .find(el => el.children.length === 0 && el.textContent.toLowerCase().includes("days in a row"));
+            if (daysLabelEl) {
+                daysLabelEl.textContent = currentStreak === 1 ? "Day in a row" : "Days in a row";
+            }
+
+            const dayBadges = Array.from(streakCard.querySelectorAll("div, span"))
+                .filter(el => el.children.length === 0 && ["M", "T", "W", "F", "S"].includes(el.textContent.trim()));
+            if (dayBadges.length === 7) {
+                const today = new Date();
+                const todayMonIdx = (today.getDay() + 6) % 7;
+                dayBadges.forEach((badge, idx) => {
+                    const diff = idx - todayMonIdx;
+                    const d = new Date();
+                    d.setDate(today.getDate() + diff);
+                    const key = getLocalDateKey(d);
+                    if (hoursByDate[key] > 0) {
+                        badge.style.background = "#10b981";
+                        badge.style.color = "#ffffff";
+                        badge.style.fontWeight = "700";
+                        badge.style.boxShadow = "0 2px 8px rgba(16, 185, 129, 0.4)";
+                    } else {
+                        badge.style.background = "rgba(99, 102, 241, 0.12)";
+                        badge.style.color = "#6366f1";
+                    }
+                });
+            }
+
+            let leetWidget = document.getElementById("leetcodeStreakHeatmapBox");
+            if (!leetWidget) {
+                leetWidget = document.createElement("div");
+                leetWidget.id = "leetcodeStreakHeatmapBox";
+                leetWidget.style.cssText = "margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2); text-align: left;";
+                streakCard.appendChild(leetWidget);
+            }
+
+            const cells = [];
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = getLocalDateKey(d);
+                const hrs = hoursByDate[key] || 0;
+                let bg = "rgba(148, 163, 184, 0.2)";
+                if (hrs > 0 && hrs < 1) bg = "#6ee7b7";
+                else if (hrs >= 1 && hrs < 2.5) bg = "#10b981";
+                else if (hrs >= 2.5) bg = "#047857";
+
+                const labelDate = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+                cells.push(`<div title="${labelDate}: ${hrs.toFixed(1)} hrs" style="width: 100%; aspect-ratio: 1; border-radius: 3px; background: ${bg}; transition: transform 0.15s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`);
+            }
+
+            leetWidget.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: #64748b; margin-bottom: 8px;">
+                    <span>🔥 Active: <strong style="color: #f97316;">${currentStreak}d</strong></span>
+                    <span>🏆 Max Streak: <strong style="color: #10b981;">${maxStreak}d</strong></span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px;" title="Last 30 Days Study Activity">
+                    ${cells.join("")}
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: #94a3b8; margin-top: 5px;">
+                    <span>30 days ago</span>
+                    <span>Today</span>
+                </div>
+            `;
+        }
+
+        // 2. Sync "Today's Study Goal" Progress Bar
+        const targetSelect = Array.from(document.querySelectorAll("select"))
+            .find(sel => sel.textContent.includes("Hours"));
+        const targetHours = targetSelect ? (parseFloat(targetSelect.value) || 2) : 2;
+        const pct = Math.min(100, Math.round((todayHours / targetHours) * 100));
+        const remHours = Math.max(0, targetHours - todayHours);
+
+        const pctBadge = Array.from(document.querySelectorAll("span, div"))
+            .find(el => el.children.length === 0 && el.textContent.includes("% Completed"));
+        if (pctBadge) pctBadge.textContent = `${pct}% Completed`;
+
+        const compText = Array.from(document.querySelectorAll("span, div"))
+            .find(el => el.children.length === 0 && el.textContent.includes("hrs completed today"));
+        if (compText) compText.textContent = `${todayHours.toFixed(1)} hrs completed today`;
+
+        const remText = Array.from(document.querySelectorAll("span, div"))
+            .find(el => el.children.length === 0 && el.textContent.includes("hrs remaining"));
+        if (remText) remText.textContent = `${remHours.toFixed(1)} hrs remaining`;
+
+        if (compText && compText.parentElement && compText.parentElement.previousElementSibling) {
+            const barTrack = compText.parentElement.previousElementSibling;
+            let barFill = barTrack.firstElementChild;
+            if (!barFill) {
+                barFill = document.createElement("div");
+                barFill.style.cssText = "height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6366f1, #10b981); transition: width 0.35s ease;";
+                barTrack.style.overflow = "hidden";
+                barTrack.appendChild(barFill);
+            }
+            barFill.style.width = `${pct}%`;
+        }
+
+        // 3. Update the 4 Summary Cards (Studied Today, This Month, This Year, All-Time Total)
+        updateSummaryMetricCard("Studied Today", formatHoursToHm(todayHours));
+        updateSummaryMetricCard("This Month", formatHoursToHm(monthHours));
+        updateSummaryMetricCard("This Year", formatHoursToHm(yearHours));
+        updateSummaryMetricCard("All-Time Total", formatHoursToHm(allTimeHours));
+
+        // 4. Update Study Activity History list & entry count
+        const historyHeading = Array.from(document.querySelectorAll("h1, h2, h3, h4, div, span"))
+            .find(el => el.children.length === 0 && el.textContent.includes("Study Activity History"));
+        if (historyHeading) {
+            const historySection = historyHeading.closest("div[style*='border-radius'], section, div");
+            if (historySection) {
+                const countBadge = Array.from(historySection.querySelectorAll("span, div"))
+                    .find(el => el.children.length === 0 && /\d+\s*entr/i.test(el.textContent));
+                if (countBadge) countBadge.textContent = `${sessions.length} ${sessions.length === 1 ? "entry" : "entries"}`;
+
+                let listBox = document.getElementById("studyHistoryDynamicList");
+                if (!listBox) {
+                    listBox = document.createElement("div");
+                    listBox.id = "studyHistoryDynamicList";
+                    listBox.style.cssText = "display: flex; flex-direction: column; gap: 8px; margin-top: 12px;";
+                    historySection.appendChild(listBox);
+                }
+
+                const recentSessions = [...sessions].reverse().slice(0, 10);
+                listBox.innerHTML = recentSessions.length === 0
+                    ? `<div style="font-size: 0.84rem; color: #94a3b8; padding: 8px 0;">No study sessions logged yet.</div>`
+                    : recentSessions.map(item => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 10px; background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.16); font-size: 0.85rem;">
+                            <div>
+                                <strong style="color: #1e293b;">${item.topic}</strong>
+                                <span style="margin-left: 8px; font-size: 0.76rem; padding: 2px 8px; border-radius: 999px; background: rgba(99, 102, 241, 0.12); color: #4f46e5;">${item.source}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <strong style="color: #10b981;">+${formatHoursToHm(item.hours)}</strong>
+                                <div style="font-size: 0.72rem; color: #64748b;">${item.date}</div>
+                            </div>
+                        </div>
+                    `).join("");
+            }
+        }
+    }
+
+    // Intercept Quick Select buttons (+30m, +1 Hr, +2 Hrs, +3 Hrs, +4 Hrs) & "✓ Mark & Save"
+    document.addEventListener("click", function (e) {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const btnText = btn.textContent.trim().toLowerCase();
+
+        // Quick Select buttons support
+        const quickMap = {
+            "+30m": 0.5,
+            "+1 hr": 1,
+            "+2 hrs": 2,
+            "+3 hrs": 3,
+            "+4 hrs": 4
+        };
+        if (quickMap[btnText] !== undefined) {
+            const sectionBox = btn.closest("div[style*='border-radius'], section, form") || document;
+            const hoursInput = sectionBox.querySelector("input[type='number']") ||
+                Array.from(sectionBox.querySelectorAll("input")).find(inp => inp.placeholder.toLowerCase().includes("hour"));
+            if (hoursInput) {
+                hoursInput.value = quickMap[btnText];
+            }
+            return;
+        }
+
+        // "✓ Mark & Save" handler
+        if (!btnText.includes("mark & save") && !btnText.includes("mark and save")) return;
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const sectionBox = btn.closest("div[style*='border-radius'], section, form") || document;
+        const textInputs = Array.from(sectionBox.querySelectorAll("input[type='text'], input:not([type])"));
+        const numInputs = Array.from(sectionBox.querySelectorAll("input[type='number']"));
+
+        const topicInput = textInputs.find(inp => inp.placeholder.toLowerCase().includes("topic") || inp.placeholder.toLowerCase().includes("dsa")) || textInputs[0];
+        const hoursInput = numInputs[0] || textInputs.find(inp => inp.placeholder.toLowerCase().includes("hour"));
+        const sourceSelect = sectionBox.querySelector("select");
+
+        const topicVal = topicInput ? topicInput.value.trim() : "Self Study";
+        const hoursVal = hoursInput ? parseFloat(hoursInput.value) : 0;
+        const sourceVal = sourceSelect ? sourceSelect.value : "Study";
+
+        if (!topicVal) {
+            alert("⚠️ Please enter what topic you studied (e.g., DSA Arrays, YouTube Lecture)!");
+            return;
+        }
+        if (!hoursVal || hoursVal <= 0 || hoursVal > 24) {
+            alert("⚠️ Please enter valid study hours (e.g., 1 or 1.5)!");
+            return;
+        }
+
+        const sessions = getAllSessions();
+        sessions.push({
+            id: Date.now(),
+            date: getLocalDateKey(new Date()),
+            topic: topicVal,
+            source: sourceVal,
+            hours: hoursVal
+        });
+        saveSessions(sessions);
+
+        if (topicInput) topicInput.value = "";
+        if (hoursInput) hoursInput.value = "";
+
+        renderStreakAndGoalUI();
+
+        const stats = calculateStreakStats(sessions);
+        alert(`🔥 Session Saved! (${hoursVal} hrs on ${topicVal})\nCurrent Study Streak: ${stats.currentStreak} Day${stats.currentStreak > 1 ? "s" : ""} in a row!`);
+    }, true);
+
+    document.addEventListener("change", function (e) {
+        if (e.target && e.target.tagName === "SELECT" && e.target.textContent.includes("Hours")) {
+            renderStreakAndGoalUI();
+        }
+    });
+
+    window.addEventListener("DOMContentLoaded", renderStreakAndGoalUI);
+    setTimeout(renderStreakAndGoalUI, 300);
+})();
