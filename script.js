@@ -2800,86 +2800,166 @@ Rules:
 
 
 // =====================================================
-// BACK TO NOTES, SUBMIT QUIZ & RETAKE HANDLERS
+// POLISHED VALIDATION, SUBMIT QUIZ & BACK TO NOTES HANDLERS
 // =====================================================
-document.addEventListener("click", function (e) {
-    const clickedBtn = e.target.closest("button");
-    if (!clickedBtn) return;
-
-    const btnId = clickedBtn.id || "";
-    const btnText = clickedBtn.textContent.trim().toLowerCase();
-
-    // 1. BACK TO NOTES / CANCEL / TAKE ANOTHER QUIZ
-    if (
-        btnId === "cancelQuizBtn" ||
-        btnId === "retakeNewQuizBtn" ||
-        btnText.includes("back to notes") ||
-        btnText.includes("another quiz") ||
-        btnText.includes("new quiz")
-    ) {
-        e.preventDefault();
+(function () {
+    // Ensure Back to Notes button is always visible inside quizTestArea
+    function ensureBackButton() {
         const testArea = document.getElementById("quizTestArea");
-        const resultArea = document.getElementById("quizResultArea");
-        const setupBox = document.getElementById("quizSetupBox");
+        if (!testArea || document.getElementById("polishedBackBtn")) return;
 
-        if (testArea) testArea.style.display = "none";
-        if (resultArea) resultArea.style.display = "none";
-        if (setupBox) setupBox.style.display = "flex";
-        return;
+        const topBar = document.createElement("div");
+        topBar.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;";
+        topBar.innerHTML = `
+            <button type="button" id="polishedBackBtn"
+                style="padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(99, 102, 241, 0.35); background: rgba(99, 102, 241, 0.1); color: #4f46e5; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                ← Back to Notes
+            </button>
+            <span id="quizAttemptCounter" style="font-size: 0.82rem; font-weight: 600; color: #64748b;">
+                Select 1 option for every question
+            </span>
+        `;
+        testArea.insertBefore(topBar, testArea.firstChild);
     }
 
-    // 2. SUBMIT QUIZ & SHOW SCORE + EXPLANATIONS
-    if (btnId === "submitAiQuizBtn" || btnText.includes("submit test") || btnText.includes("submit quiz")) {
-        e.preventDefault();
-        const quizList = window.currentGeneratedQuiz || (typeof currentGeneratedQuiz !== "undefined" ? currentGeneratedQuiz : []);
-        if (!quizList || quizList.length === 0) return;
+    // Live counter update when user selects an option
+    document.addEventListener("change", function (e) {
+        if (e.target && e.target.name && e.target.name.startsWith("quiz_q_")) {
+            const quizList = window.currentGeneratedQuiz || [];
+            if (!quizList.length) return;
+            let answered = 0;
+            quizList.forEach((_, idx) => {
+                if (document.querySelector(`input[name="quiz_q_${idx}"]:checked`)) answered++;
+            });
+            const counterEl = document.getElementById("quizAttemptCounter");
+            if (counterEl) {
+                counterEl.textContent = `Answered: ${answered} / ${quizList.length}`;
+                counterEl.style.color = answered === quizList.length ? "#10b981" : "#6366f1";
+            }
+            // Remove red warning border if previously highlighted
+            const card = e.target.closest("div[style*='border-radius: 14px']");
+            if (card) card.style.borderColor = "rgba(99, 102, 241, 0.25)";
+        }
+    });
 
-        let score = 0;
-        const reviewHtml = quizList.map((q, qIdx) => {
-            const selectedInput = document.querySelector(`input[name="quiz_q_${qIdx}"]:checked`);
-            const userAns = selectedInput ? selectedInput.value : "Not Answered";
-            const isCorrect = userAns.trim().toLowerCase() === String(q.answer).trim().toLowerCase();
-            if (isCorrect) score++;
+    document.addEventListener("click", function (e) {
+        const clickedBtn = e.target.closest("button");
+        if (!clickedBtn) return;
 
-            return `
-                <div style="padding: 15px 18px; border-radius: 12px; background: ${isCorrect ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)"}; border: 1px solid ${isCorrect ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"};">
-                    <div style="font-weight: 600; color: #f8fafc; font-size: 0.94rem; margin-bottom: 6px;">
-                        ${isCorrect ? "✅" : "❌"} Q${qIdx + 1}. ${q.question}
+        const btnId = clickedBtn.id || "";
+        const btnText = clickedBtn.textContent.trim().toLowerCase();
+
+        // Inject Back button whenever quiz starts
+        if (btnId === "generateAiQuizBtn" || btnText.includes("generate mcq")) {
+            setTimeout(ensureBackButton, 400);
+        }
+
+        // 1. BACK TO NOTES / CANCEL / CREATE ANOTHER QUIZ
+        if (
+            btnId === "polishedBackBtn" ||
+            btnId === "cancelQuizBtn" ||
+            btnId === "retakeNewQuizBtn" ||
+            btnText.includes("back to notes") ||
+            btnText.includes("create another quiz") ||
+            btnText.includes("another quiz")
+        ) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            const testArea = document.getElementById("quizTestArea");
+            const resultArea = document.getElementById("quizResultArea");
+            const setupBox = document.getElementById("quizSetupBox");
+
+            if (testArea) testArea.style.display = "none";
+            if (resultArea) resultArea.style.display = "none";
+            if (setupBox) setupBox.style.display = "flex";
+            return;
+        }
+
+        // 2. SUBMIT QUIZ WITH STRICT ALL-QUESTIONS ATTEMPT VALIDATION
+        if (btnId === "submitAiQuizBtn" || btnText.includes("submit test") || btnText.includes("submit quiz")) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            const quizList = window.currentGeneratedQuiz || (typeof currentGeneratedQuiz !== "undefined" ? currentGeneratedQuiz : []);
+            if (!quizList || quizList.length === 0) return;
+
+            // Check if ALL questions have 1 option selected
+            const unansweredNumbers = [];
+            let firstUnansweredEl = null;
+
+            quizList.forEach((_, qIdx) => {
+                const selectedInput = document.querySelector(`input[name="quiz_q_${qIdx}"]:checked`);
+                const anyOptionInput = document.querySelector(`input[name="quiz_q_${qIdx}"]`);
+                const questionCard = anyOptionInput ? anyOptionInput.closest("div[style*='border-radius: 14px']") : null;
+
+                if (!selectedInput) {
+                    unansweredNumbers.push(`Q${qIdx + 1}`);
+                    if (questionCard) {
+                        questionCard.style.borderColor = "#ef4444";
+                        if (!firstUnansweredEl) firstUnansweredEl = questionCard;
+                    }
+                } else if (questionCard) {
+                    questionCard.style.borderColor = "rgba(99, 102, 241, 0.25)";
+                }
+            });
+
+            if (unansweredNumbers.length > 0) {
+                if (firstUnansweredEl) {
+                    firstUnansweredEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+                alert(`⚠️ Please answer all questions before submitting!\nUnanswered: ${unansweredNumbers.join(", ")}`);
+                return;
+            }
+
+            // Calculate score & build review cards
+            let score = 0;
+            const reviewHtml = quizList.map((q, qIdx) => {
+                const selectedInput = document.querySelector(`input[name="quiz_q_${qIdx}"]:checked`);
+                const userAns = selectedInput ? selectedInput.value : "Not Answered";
+                const isCorrect = userAns.trim().toLowerCase() === String(q.answer).trim().toLowerCase();
+                if (isCorrect) score++;
+
+                return `
+                    <div style="padding: 15px 18px; border-radius: 12px; background: ${isCorrect ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)"}; border: 1px solid ${isCorrect ? "rgba(16, 185, 129, 0.35)" : "rgba(239, 68, 68, 0.35)"};">
+                        <div style="font-weight: 600; color: #1e293b; font-size: 0.94rem; margin-bottom: 6px;">
+                            ${isCorrect ? "✅" : "❌"} Q${qIdx + 1}. ${q.question}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #334155; margin-bottom: 4px;">
+                            Your Answer: <strong style="color: ${isCorrect ? "#059669" : "#dc2626"};">${userAns}</strong>
+                            ${!isCorrect ? ` | Correct Answer: <strong style="color: #059669;">${q.answer}</strong>` : ""}
+                        </div>
+                        <div style="font-size: 0.82rem; color: #475569;">💡 ${q.explanation}</div>
                     </div>
-                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;">
-                        Your Answer: <strong style="color: ${isCorrect ? "#34d399" : "#f87171"};">${userAns}</strong>
-                        ${!isCorrect ? ` | Correct Answer: <strong style="color: #34d399;">${q.answer}</strong>` : ""}
-                    </div>
-                    <div style="font-size: 0.82rem; color: #94a3b8;">💡 ${q.explanation}</div>
-                </div>
-            `;
-        }).join("");
+                `;
+            }).join("");
 
-        const total = quizList.length;
-        const accuracy = Math.round((score / total) * 100);
-        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "AI Mock Test";
+            const total = quizList.length;
+            const accuracy = Math.round((score / total) * 100);
+            const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "AI Mock Test";
 
-        const scoreEl = document.getElementById("quizFinalScoreDisplay");
-        const accEl = document.getElementById("quizAccuracyBadge");
-        const revEl = document.getElementById("quizReviewContainer");
-        if (scoreEl) scoreEl.textContent = `${score} / ${total}`;
-        if (accEl) accEl.textContent = `Accuracy: ${accuracy}%`;
-        if (revEl) revEl.innerHTML = reviewHtml;
+            const scoreEl = document.getElementById("quizFinalScoreDisplay");
+            const accEl = document.getElementById("quizAccuracyBadge");
+            const revEl = document.getElementById("quizReviewContainer");
+            if (scoreEl) scoreEl.textContent = `${score} / ${total}`;
+            if (accEl) accEl.textContent = `Accuracy: ${accuracy}%`;
+            if (revEl) revEl.innerHTML = reviewHtml;
 
-        const history = JSON.parse(localStorage.getItem("studyflowQuizHistory") || "[]");
-        history.push({
-            topic,
-            score,
-            total,
-            accuracy,
-            date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-        });
-        localStorage.setItem("studyflowQuizHistory", JSON.stringify(history));
-        if (typeof renderPastQuizScores === "function") renderPastQuizScores();
+            const history = JSON.parse(localStorage.getItem("studyflowQuizHistory") || "[]");
+            history.push({
+                topic,
+                score,
+                total,
+                accuracy,
+                date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+            });
+            localStorage.setItem("studyflowQuizHistory", JSON.stringify(history));
+            if (typeof renderPastQuizScores === "function") renderPastQuizScores();
 
-        const testArea = document.getElementById("quizTestArea");
-        const resultArea = document.getElementById("quizResultArea");
-        if (testArea) testArea.style.display = "none";
-        if (resultArea) resultArea.style.display = "flex";
-    }
-});
+            const testArea = document.getElementById("quizTestArea");
+            const resultArea = document.getElementById("quizResultArea");
+            if (testArea) testArea.style.display = "none";
+            if (resultArea) resultArea.style.display = "flex";
+        }
+    }, true);
+})();
