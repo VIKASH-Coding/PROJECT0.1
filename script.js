@@ -2620,3 +2620,366 @@ renderPastQuizScores();
         setTimeout(() => openAiQuizPanel(), 200);
     }
 })();
+
+
+
+//Quizgenerator button
+
+// =====================================================
+// DUAL-AI ENGINE: GROQ (ULTRA-FAST, ZERO 503) + GEMINI VISION
+// =====================================================
+(function () {
+    const oldGenBtn = document.getElementById("generateAiQuizBtn");
+    if (oldGenBtn) {
+        const cleanBtn = oldGenBtn.cloneNode(true);
+        oldGenBtn.parentNode.replaceChild(cleanBtn, oldGenBtn);
+    }
+
+    // Compress uploaded images automatically for fast Vision processing
+    const imgInput = document.getElementById("quizImageUpload");
+    if (imgInput) {
+        imgInput.addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement("canvas");
+                    const maxDim = 1024;
+                    let w = img.width, h = img.height;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                    const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.8);
+                    window.uploadedImageBase64 = compressedDataUrl.split(",")[1];
+                    window.uploadedImageMime = "image/jpeg";
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    let isGeneratingQuiz = false;
+
+    document.addEventListener("click", async function (e) {
+        // 1. SAVE API KEY (Supports both Groq gsk_... & Gemini AIza...)
+        if (e.target.closest("#saveGeminiKeyBtn")) {
+            const key = document.getElementById("geminiApiKeyInput")?.value.trim() || "";
+            if (!key) return alert("🔑 Please paste your Groq (gsk_...) or Gemini (AIza...) API key first!");
+            localStorage.setItem("studyflowGeminiApiKey", key);
+            const provider = key.startsWith("gsk_") ? "Groq Llama-3.3 AI" : "Google Gemini AI";
+            const status = document.getElementById("geminiKeyStatus");
+            if (status) {
+                status.textContent = `✅ ${provider} Connected`;
+                status.style.color = "#10b981";
+            }
+            alert(`✅ ${provider} Key saved securely!`);
+            return;
+        }
+
+        // 2. FILL SAMPLE NOTES (DEMO)
+        if (e.target.closest("#loadSampleNotesBtn")) {
+            window.uploadedImageBase64 = null;
+            const topicEl = document.getElementById("quizTopicTitleInput");
+            const notesEl = document.getElementById("quizNotesTextarea");
+            if (topicEl) topicEl.value = "Quantitative Aptitude - Percentage & Profit/Loss";
+            if (notesEl) {
+                notesEl.value = "Create Quantitative Aptitude numerical problems covering Percentages, Profit & Loss, Ratio, and Time & Work with 4 options and short calculation steps.";
+            }
+            const statusEl = document.getElementById("quizExtractStatus");
+            if (statusEl) {
+                statusEl.style.display = "block";
+                statusEl.textContent = "✨ Aptitude prompt loaded! Now click 'Generate MCQ Test'.";
+            }
+            return;
+        }
+
+        // 3. GENERATE MCQ TEST
+        const btnEl = e.target.closest("#generateAiQuizBtn") ||
+            (e.target.closest("button") && e.target.closest("button").textContent.toLowerCase().includes("generate mcq") ? e.target.closest("button") : null);
+
+        if (!btnEl) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (isGeneratingQuiz) return;
+
+        const text = document.getElementById("quizNotesTextarea")?.value.trim() || "";
+        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "";
+        const imgB64 = window.uploadedImageBase64 || null;
+        const imgMime = window.uploadedImageMime || "image/jpeg";
+
+        if (!text && !topic && !imgB64) {
+            return alert("⚠️ Please enter a Topic (e.g., Aptitude), paste notes, or upload a PDF/Image first!");
+        }
+
+        const apiKey = localStorage.getItem("studyflowGeminiApiKey") || document.getElementById("geminiApiKeyInput")?.value.trim() || "";
+        if (!apiKey) {
+            return alert("🔑 Please paste your free Groq (gsk_...) or Gemini (AIza...) API Key in the top box and click 'Save Key'!");
+        }
+
+        const count = Number(document.getElementById("quizQuestionCount")?.value || 5);
+        const difficulty = document.getElementById("quizDifficultySelect")?.value || "Medium";
+
+        isGeneratingQuiz = true;
+        const origHtml = btnEl.innerHTML;
+        btnEl.disabled = true;
+        btnEl.innerHTML = "⚡ AI Generating MCQs...";
+
+        try {
+            const promptText = `You are an expert exam setter. Create ${count} high-quality Multiple Choice Questions (MCQs) at "${difficulty}" difficulty based strictly on the topic, notes, or image.
+Topic: ${topic || "General Study"}
+Notes: ${text}
+
+Rules:
+1. Questions must match the exact topic (e.g., if Aptitude, give real numerical/logical problems).
+2. Provide 4 distinct options per question.
+3. Return ONLY a valid JSON array (no markdown, no backticks) in this exact format:
+[
+  {
+    "question": "Question text?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "answer": "Exact text of correct option",
+    "explanation": "Short step-by-step explanation"
+  }
+]`;
+
+            let questions = null;
+
+            // ROUTE A: GROQ API (Auto-detects active free models in your account)
+            if (apiKey.startsWith("gsk_")) {
+                const modelsRes = await fetch("https://api.groq.com/openai/v1/models", {
+                    headers: { "Authorization": `Bearer ${apiKey}` }
+                });
+                const modelsData = modelsRes.ok ? await modelsRes.json() : { data: [] };
+                const availableIds = (modelsData.data || [])
+                    .map(m => m.id)
+                    .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("embed"));
+
+                // Prioritize vision-capable models if an image is attached, else best chat models
+                availableIds.sort((a, b) => {
+                    const score = id => {
+                        if (imgB64) return (id.includes("scout") || id.includes("maverick") || id.includes("vision")) ? 0 : 1;
+                        if (id.includes("llama-4") || id.includes("70b") || id.includes("gpt-oss")) return 0;
+                        if (id.includes("8b") || id.includes("qwen") || id.includes("gemma")) return 1;
+                        return 2;
+                    };
+                    return score(a) - score(b);
+                });
+
+                const modelsToTry = availableIds.length > 0 ? availableIds.slice(0, 4) : ["llama-3.1-8b-instant"];
+                let lastGroqErr = "Groq model error";
+
+                for (const groqModel of modelsToTry) {
+                    const userContent = imgB64
+                        ? [
+                            { type: "text", text: promptText },
+                            { type: "image_url", image_url: { url: `data:${imgMime};base64,${imgB64}` } }
+                        ]
+                        : promptText;
+
+                    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: groqModel,
+                            messages: [{ role: "user", content: userContent }],
+                            temperature: 0.4
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        lastGroqErr = errData?.error?.message || `Groq API Error (${res.status})`;
+                        continue; // Automatically try next active model in your account
+                    }
+
+                    const data = await res.json();
+                    const rawText = data?.choices?.[0]?.message?.content || "";
+                    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+                    if (jsonMatch) {
+                        questions = JSON.parse(jsonMatch[0]);
+                        break;
+                    }
+                }
+
+                if (!questions) throw new Error(lastGroqErr);
+            }
+            // ROUTE B: GOOGLE GEMINI API
+            else {
+                const parts = [{ text: promptText }];
+                if (imgB64) parts.push({ inline_data: { mime_type: imgMime, data: imgB64 } });
+
+                const models = ["gemini-flash-latest", "gemini-3.8-flash"];
+                for (const model of models) {
+                    const res = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: [{ parts }],
+                                generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
+                            })
+                        }
+                    );
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+                    if (jsonMatch) {
+                        questions = JSON.parse(jsonMatch[0]);
+                        break;
+                    }
+                }
+                if (!questions) throw new Error("Gemini servers are busy right now. Try pasting a free Groq API key (console.groq.com) for instant results!");
+            }
+
+            window.currentGeneratedQuiz = questions;
+            if (typeof currentGeneratedQuiz !== "undefined") currentGeneratedQuiz = questions;
+
+            const titleEl = document.getElementById("activeQuizHeaderTitle");
+            const metaEl = document.getElementById("activeQuizMeta");
+            if (titleEl) titleEl.textContent = `📝 ${topic || "AI Smart Mock Test"}`;
+            if (metaEl) metaEl.textContent = `${questions.length} Questions • ${difficulty} Difficulty • Powered by ${apiKey.startsWith("gsk_") ? "Groq Llama-3 AI" : "Gemini AI"}`;
+
+            let container = document.getElementById("quizQuestionsContainer");
+            const setupBox = document.getElementById("quizSetupBox");
+            const testArea = document.getElementById("quizTestArea");
+            const resultArea = document.getElementById("quizResultArea");
+
+            if (!container && setupBox) {
+                container = document.createElement("div");
+                container.id = "quizQuestionsContainer";
+                container.style.cssText = "display:flex; flex-direction:column; gap:14px; margin-top:16px;";
+                setupBox.parentNode.appendChild(container);
+            }
+
+            if (container) {
+                container.innerHTML = questions.map((q, qIdx) => `
+                    <div style="padding: 18px; border-radius: 14px; background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.25);">
+                        <div style="font-weight: 600; margin-bottom: 12px; font-size: 0.96rem; line-height: 1.5;">
+                            <span style="color: #6366f1; margin-right: 6px;">Q${qIdx + 1}.</span> ${q.question}
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
+                            ${(q.options || []).map((opt, oIdx) => `
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; color: #f1f5f9; font-size: 0.88rem;">
+                                    <input type="radio" name="quiz_q_${qIdx}" value="${String(opt).replace(/"/g, "&quot;")}" style="accent-color: #6366f1;">
+                                    <span><strong>${String.fromCharCode(65 + oIdx)}.</strong> ${opt}</span>
+                                </label>
+                            `).join("")}
+                        </div>
+                    </div>
+                `).join("");
+            }
+
+            if (testArea && setupBox) {
+                setupBox.style.display = "none";
+                if (resultArea) resultArea.style.display = "none";
+                testArea.style.display = "flex";
+            }
+        } catch (err) {
+            alert("❌ AI Error: " + err.message);
+        } finally {
+            isGeneratingQuiz = false;
+            btnEl.disabled = false;
+            btnEl.innerHTML = origHtml;
+        }
+    }, true);
+})();
+
+// back to notes 
+
+
+// =====================================================
+// BACK TO NOTES, SUBMIT QUIZ & RETAKE HANDLERS
+// =====================================================
+document.addEventListener("click", function (e) {
+    const clickedBtn = e.target.closest("button");
+    if (!clickedBtn) return;
+
+    const btnId = clickedBtn.id || "";
+    const btnText = clickedBtn.textContent.trim().toLowerCase();
+
+    // 1. BACK TO NOTES / CANCEL / TAKE ANOTHER QUIZ
+    if (
+        btnId === "cancelQuizBtn" ||
+        btnId === "retakeNewQuizBtn" ||
+        btnText.includes("back to notes") ||
+        btnText.includes("another quiz") ||
+        btnText.includes("new quiz")
+    ) {
+        e.preventDefault();
+        const testArea = document.getElementById("quizTestArea");
+        const resultArea = document.getElementById("quizResultArea");
+        const setupBox = document.getElementById("quizSetupBox");
+
+        if (testArea) testArea.style.display = "none";
+        if (resultArea) resultArea.style.display = "none";
+        if (setupBox) setupBox.style.display = "flex";
+        return;
+    }
+
+    // 2. SUBMIT QUIZ & SHOW SCORE + EXPLANATIONS
+    if (btnId === "submitAiQuizBtn" || btnText.includes("submit test") || btnText.includes("submit quiz")) {
+        e.preventDefault();
+        const quizList = window.currentGeneratedQuiz || (typeof currentGeneratedQuiz !== "undefined" ? currentGeneratedQuiz : []);
+        if (!quizList || quizList.length === 0) return;
+
+        let score = 0;
+        const reviewHtml = quizList.map((q, qIdx) => {
+            const selectedInput = document.querySelector(`input[name="quiz_q_${qIdx}"]:checked`);
+            const userAns = selectedInput ? selectedInput.value : "Not Answered";
+            const isCorrect = userAns.trim().toLowerCase() === String(q.answer).trim().toLowerCase();
+            if (isCorrect) score++;
+
+            return `
+                <div style="padding: 15px 18px; border-radius: 12px; background: ${isCorrect ? "rgba(16, 185, 129, 0.08)" : "rgba(239, 68, 68, 0.08)"}; border: 1px solid ${isCorrect ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"};">
+                    <div style="font-weight: 600; color: #f8fafc; font-size: 0.94rem; margin-bottom: 6px;">
+                        ${isCorrect ? "✅" : "❌"} Q${qIdx + 1}. ${q.question}
+                    </div>
+                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;">
+                        Your Answer: <strong style="color: ${isCorrect ? "#34d399" : "#f87171"};">${userAns}</strong>
+                        ${!isCorrect ? ` | Correct Answer: <strong style="color: #34d399;">${q.answer}</strong>` : ""}
+                    </div>
+                    <div style="font-size: 0.82rem; color: #94a3b8;">💡 ${q.explanation}</div>
+                </div>
+            `;
+        }).join("");
+
+        const total = quizList.length;
+        const accuracy = Math.round((score / total) * 100);
+        const topic = document.getElementById("quizTopicTitleInput")?.value.trim() || "AI Mock Test";
+
+        const scoreEl = document.getElementById("quizFinalScoreDisplay");
+        const accEl = document.getElementById("quizAccuracyBadge");
+        const revEl = document.getElementById("quizReviewContainer");
+        if (scoreEl) scoreEl.textContent = `${score} / ${total}`;
+        if (accEl) accEl.textContent = `Accuracy: ${accuracy}%`;
+        if (revEl) revEl.innerHTML = reviewHtml;
+
+        const history = JSON.parse(localStorage.getItem("studyflowQuizHistory") || "[]");
+        history.push({
+            topic,
+            score,
+            total,
+            accuracy,
+            date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        });
+        localStorage.setItem("studyflowQuizHistory", JSON.stringify(history));
+        if (typeof renderPastQuizScores === "function") renderPastQuizScores();
+
+        const testArea = document.getElementById("quizTestArea");
+        const resultArea = document.getElementById("quizResultArea");
+        if (testArea) testArea.style.display = "none";
+        if (resultArea) resultArea.style.display = "flex";
+    }
+});
