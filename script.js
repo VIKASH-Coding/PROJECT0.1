@@ -2583,3 +2583,40 @@ document.querySelectorAll('a[href="#aiQuiz"]').forEach(link => {
 
 renderPastQuizScores();
 }
+
+
+// =====================================================
+// FORCE-ACTIVATE AI QUIZ NAVIGATION & BUTTONS
+// =====================================================
+(function initAiQuizNavigation() {
+    function openAiQuizPanel(e) {
+        if (e) e.preventDefault();
+        const quizSec = document.getElementById("aiQuiz");
+        if (!quizSec) return;
+
+        // Hide other sections if tab-based, or show & scroll smoothly
+        document.querySelectorAll(".content-section, .dashboard-section, main > section").forEach(sec => {
+            if (sec.id !== "aiQuiz" && sec.classList.contains("active")) {
+                sec.classList.remove("active");
+            }
+        });
+
+        quizSec.style.display = "block";
+        quizSec.classList.add("active");
+        quizSec.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // Bind sidebar AI Quiz link by href or text
+    document.querySelectorAll("a, button, .nav-item").forEach(el => {
+        const href = el.getAttribute("href") || "";
+        const text = (el.textContent || "").trim().toLowerCase();
+        if (href === "#aiQuiz" || text === "ai quiz" || text.includes("ai quiz")) {
+            el.addEventListener("click", openAiQuizPanel);
+        }
+    });
+
+    // If URL already has #aiQuiz, open it immediately
+    if (window.location.hash === "#aiQuiz") {
+        setTimeout(() => openAiQuizPanel(), 200);
+    }
+})();
