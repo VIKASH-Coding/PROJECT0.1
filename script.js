@@ -2626,9 +2626,12 @@ renderPastQuizScores();
 //Quizgenerator button
 
 // =====================================================
-// DUAL-AI ENGINE: GROQ (ULTRA-FAST, ZERO 503) + GEMINI VISION
+// SECURE BACKEND-CONNECTED AI QUIZ ENGINE (ZERO KEY EXPOSURE)
 // =====================================================
 (function () {
+    // Apna Vercel Live URL yahan confirm karein (aakhir mein /api/generate-quiz laga kar):
+    const BACKEND_URL = "https://project-0-1-backend.vercel.app/api/generate-quiz";
+
     const oldGenBtn = document.getElementById("generateAiQuizBtn");
     if (oldGenBtn) {
         const cleanBtn = oldGenBtn.cloneNode(true);
@@ -2668,22 +2671,7 @@ renderPastQuizScores();
     let isGeneratingQuiz = false;
 
     document.addEventListener("click", async function (e) {
-        // 1. SAVE API KEY (Supports both Groq gsk_... & Gemini AIza...)
-        if (e.target.closest("#saveGeminiKeyBtn")) {
-            const key = document.getElementById("geminiApiKeyInput")?.value.trim() || "";
-            if (!key) return alert("🔑 Please paste your Groq (gsk_...) or Gemini (AIza...) API key first!");
-            localStorage.setItem("studyflowGeminiApiKey", key);
-            const provider = key.startsWith("gsk_") ? "Groq Llama-3.3 AI" : "Google Gemini AI";
-            const status = document.getElementById("geminiKeyStatus");
-            if (status) {
-                status.textContent = `✅ ${provider} Connected`;
-                status.style.color = "#10b981";
-            }
-            alert(`✅ ${provider} Key saved securely!`);
-            return;
-        }
-
-        // 2. FILL SAMPLE NOTES (DEMO)
+        // 1. FILL SAMPLE NOTES (DEMO)
         if (e.target.closest("#loadSampleNotesBtn")) {
             window.uploadedImageBase64 = null;
             const topicEl = document.getElementById("quizTopicTitleInput");
@@ -2700,7 +2688,7 @@ renderPastQuizScores();
             return;
         }
 
-        // 3. GENERATE MCQ TEST
+        // 2. GENERATE MCQ TEST VIA SECURE VERCEL BACKEND
         const btnEl = e.target.closest("#generateAiQuizBtn") ||
             (e.target.closest("button") && e.target.closest("button").textContent.toLowerCase().includes("generate mcq") ? e.target.closest("button") : null);
 
@@ -2716,11 +2704,6 @@ renderPastQuizScores();
 
         if (!text && !topic && !imgB64) {
             return alert("⚠️ Please enter a Topic (e.g., Aptitude), paste notes, or upload a PDF/Image first!");
-        }
-
-        const apiKey = localStorage.getItem("studyflowGeminiApiKey") || document.getElementById("geminiApiKeyInput")?.value.trim() || "";
-        if (!apiKey) {
-            return alert("🔑 Please paste your free Groq (gsk_...) or Gemini (AIza...) API Key in the top box and click 'Save Key'!");
         }
 
         const count = Number(document.getElementById("quizQuestionCount")?.value || 5);
@@ -2749,107 +2732,24 @@ Rules:
   }
 ]`;
 
-            let questions = null;
+            // Call secure serverless backend (API key stays safely hidden on Vercel server)
+            const res = await fetch(BACKEND_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ promptText, imgB64, imgMime })
+            });
 
-            // ROUTE A: GROQ API (Auto-detects active free models in your account)
-            if (apiKey.startsWith("gsk_")) {
-                const modelsRes = await fetch("https://api.groq.com/openai/v1/models", {
-                    headers: { "Authorization": `Bearer ${apiKey}` }
-                });
-                const modelsData = modelsRes.ok ? await modelsRes.json() : { data: [] };
-                const availableIds = (modelsData.data || [])
-                    .map(m => m.id)
-                    .filter(id => !id.includes("whisper") && !id.includes("guard") && !id.includes("tts") && !id.includes("embed"));
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Server error");
 
-                // Prioritize vision-capable models if an image is attached, else best chat models
-                availableIds.sort((a, b) => {
-                    const score = id => {
-                        if (imgB64) return (id.includes("scout") || id.includes("maverick") || id.includes("vision")) ? 0 : 1;
-                        if (id.includes("llama-4") || id.includes("70b") || id.includes("gpt-oss")) return 0;
-                        if (id.includes("8b") || id.includes("qwen") || id.includes("gemma")) return 1;
-                        return 2;
-                    };
-                    return score(a) - score(b);
-                });
-
-                const modelsToTry = availableIds.length > 0 ? availableIds.slice(0, 4) : ["llama-3.1-8b-instant"];
-                let lastGroqErr = "Groq model error";
-
-                for (const groqModel of modelsToTry) {
-                    const userContent = imgB64
-                        ? [
-                            { type: "text", text: promptText },
-                            { type: "image_url", image_url: { url: `data:${imgMime};base64,${imgB64}` } }
-                        ]
-                        : promptText;
-
-                    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify({
-                            model: groqModel,
-                            messages: [{ role: "user", content: userContent }],
-                            temperature: 0.4
-                        })
-                    });
-
-                    if (!res.ok) {
-                        const errData = await res.json().catch(() => ({}));
-                        lastGroqErr = errData?.error?.message || `Groq API Error (${res.status})`;
-                        continue; // Automatically try next active model in your account
-                    }
-
-                    const data = await res.json();
-                    const rawText = data?.choices?.[0]?.message?.content || "";
-                    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-                    if (jsonMatch) {
-                        questions = JSON.parse(jsonMatch[0]);
-                        break;
-                    }
-                }
-
-                if (!questions) throw new Error(lastGroqErr);
-            }
-            // ROUTE B: GOOGLE GEMINI API
-            else {
-                const parts = [{ text: promptText }];
-                if (imgB64) parts.push({ inline_data: { mime_type: imgMime, data: imgB64 } });
-
-                const models = ["gemini-flash-latest", "gemini-3.8-flash"];
-                for (const model of models) {
-                    const res = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts }],
-                                generationConfig: { temperature: 0.4, responseMimeType: "application/json" }
-                            })
-                        }
-                    );
-                    if (!res.ok) continue;
-                    const data = await res.json();
-                    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-                    if (jsonMatch) {
-                        questions = JSON.parse(jsonMatch[0]);
-                        break;
-                    }
-                }
-                if (!questions) throw new Error("Gemini servers are busy right now. Try pasting a free Groq API key (console.groq.com) for instant results!");
-            }
-
+            const questions = data.questions;
             window.currentGeneratedQuiz = questions;
             if (typeof currentGeneratedQuiz !== "undefined") currentGeneratedQuiz = questions;
 
             const titleEl = document.getElementById("activeQuizHeaderTitle");
             const metaEl = document.getElementById("activeQuizMeta");
             if (titleEl) titleEl.textContent = `📝 ${topic || "AI Smart Mock Test"}`;
-            if (metaEl) metaEl.textContent = `${questions.length} Questions • ${difficulty} Difficulty • Powered by ${apiKey.startsWith("gsk_") ? "Groq Llama-3 AI" : "Gemini AI"}`;
+            if (metaEl) metaEl.textContent = `${questions.length} Questions • ${difficulty} Difficulty • Secured Server AI`;
 
             let container = document.getElementById("quizQuestionsContainer");
             const setupBox = document.getElementById("quizSetupBox");
